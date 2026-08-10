@@ -3,13 +3,63 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Vet Hero is an offline-first browser game where kids care for animal patients." />
     <title>Vet Hero</title>
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main>
-      <h1>Vet Hero</h1>
-      <p>Welcome to Vet Hero, an offline-first educational game for ages 4–8.</p>
-      <p>Open <code>index.html</code> in a browser to play.</p>
-    </main>
+    <div class="app-shell" role="application" aria-label="Vet Hero clinic">
+      <div class="hud-panel">
+        <div class="top-bar">
+          <div class="brand">
+            <span class="brand-dot">♥</span>
+            <span>Vet Hero</span>
+          </div>
+          <div id="offline-indicator" class="status-pill" aria-live="polite">Offline-ready play</div>
+        </div>
+
+        <div class="status-grid" aria-label="Game status">
+          <div class="status-card">
+            <span class="status-label">Stars</span>
+            <strong id="stat-stars">0</strong>
+          </div>
+          <div class="status-card">
+            <span class="status-label">Pets helped</span>
+            <strong id="stat-cured">0</strong>
+          </div>
+          <div class="status-card">
+            <span class="status-label">Photos</span>
+            <strong id="stat-photos">0</strong>
+          </div>
+          <div class="status-card">
+            <span class="status-label">Decorations</span>
+            <strong id="stat-decos">0</strong>
+          </div>
+          <div class="status-card wide">
+            <span class="status-label">Daily gift</span>
+            <strong id="stat-gift">Never</strong>
+          </div>
+        </div>
+
+        <div id="assistant-banner" class="assistant-banner" role="status" aria-live="polite">
+          Bella says: Welcome to the clinic! Tap a room to begin.
+        </div>
+      </div>
+
+      <div class="main-panel">
+        <nav class="clinic-map" aria-label="Clinic navigation">
+          <button class="nav-button" data-area="reception" type="button">Reception</button>
+          <button class="nav-button" data-area="examination" type="button">Examination</button>
+          <button class="nav-button" data-area="treatment" type="button">Treatment</button>
+          <button class="nav-button" data-area="gallery" type="button">Photo Gallery</button>
+          <button class="nav-button" data-area="stickers" type="button">Stickers</button>
+          <button class="nav-button" data-area="garden" type="button">Garden</button>
+        </nav>
+
+        <main id="screen-root" class="content-area" role="main" aria-live="polite"></main>
+      </div>
+    </div>
+
+    <script src="app.js" defer></script>
   </body>
 </html>
