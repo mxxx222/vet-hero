@@ -134,6 +134,12 @@ const state = {
   area: "reception",
   currentAnimalId: null,
   diagnosisId: null,
+  diagnosisMode: null,
+  miniGameComplete: false,
+  miniGameState: null,
+  miniGameTimer: null,
+  miniGameCleanup: null,
+  assistantTimer: null,
   treatmentChoice: null,
   treatmentComplete: false,
   bannerText: "Welcome to the clinic! Tap a room to begin.",
@@ -266,6 +272,85 @@ function getCurrentAnimal() {
   return getAnimal(id);
 }
 
+const DIAGNOSIS_GAMES = ["spot-check", "tool-match", "care-quiz"];
+
+function pickDiagnosisMode() {
+  return DIAGNOSIS_GAMES[Math.floor(Math.random() * DIAGNOSIS_GAMES.length)];
+}
+
+function initializeDiagnosisMiniGame(symptomId) {
+  const animal = getCurrentAnimal();
+  state.diagnosisId = symptomId;
+  state.diagnosisMode = pickDiagnosisMode();
+  state.miniGameComplete = false;
+  state.miniGameState = null;
+
+  if (!animal) {
+    return;
+  }
+
+  const symptom = animal.symptoms.find((entry) => entry.id === symptomId) || animal.symptoms[0];
+  const correctTool = animal.solution[symptomId];
+  const toolOptions = shuffle(animal.tools.slice(0));
+  const chosenTools = toolOptions.slice(0, 3);
+  if (!chosenTools.some((tool) => tool.id === correctTool)) {
+    chosenTools[0] = animal.tools.find((tool) => tool.id === correctTool) || chosenTools[0];
+  }
+
+  let choices = [];
+  if (state.diagnosisMode === "spot-check") {
+    const question = `Which detail best matches ${symptom.title.toLowerCase()}?`;
+    const options = shuffle(animal.symptoms.map((entry) => ({
+      id: entry.id,
+      label: entry.detail
+    }))).slice(0, 3);
+    if (!options.some((option) => option.id === symptomId)) {
+      options[0] = { id: symptomId, label: symptom.detail };
+    }
+    choices = shuffle(options);
+    state.miniGameState = {
+      mode: "spot-check",
+      question,
+      correctChoice: symptomId,
+      choices
+    };
+  } else if (state.diagnosisMode === "tool-match") {
+    const question = `Which tool helps with ${symptom.title.toLowerCase()}?`;
+    choices = shuffle(chosenTools.map((tool) => ({ id: tool.id, label: tool.title })));
+    state.miniGameState = {
+      mode: "tool-match",
+      question,
+      correctChoice: correctTool,
+      choices
+    };
+  } else {
+    const question = `How should you comfort ${animal.name}?`;
+    choices = shuffle([
+      { id: correctTool, label: animal.tools.find((tool) => tool.id === correctTool)?.title || "The right care" },
+      ...shuffle(animal.tools.filter((tool) => tool.id !== correctTool).map((tool) => ({ id: tool.id, label: tool.title }))).slice(0, 2)
+    ]);
+    state.miniGameState = {
+      mode: "care-quiz",
+      question,
+      correctChoice: correctTool,
+      choices
+    };
+  }
+
+  showAssistant("Bella wants you to complete the diagnosis challenge before treatment.");
+}
+
+function evaluateDiagnosisChoice(choiceId) {
+  if (!state.miniGameState) return;
+  const correctChoice = state.miniGameState.correctChoice;
+  if (choiceId === correctChoice) {
+    state.miniGameComplete = true;
+    showAssistant("Nice work! The diagnosis challenge is solved. Proceed to treatment.");
+  } else {
+    showAssistant("Not quite. Try again and pay attention to the clue.");
+  }
+}
+
 function updateStats() {
   elements.statStars.textContent = String(saved.stars);
   elements.statCured.textContent = String(saved.cured);
@@ -279,9 +364,36 @@ function updateOfflineStatus() {
   elements.offlineIndicator.textContent = online ? "Online" : "Offline-ready play";
 }
 
-function showAssistant(message) {
+function setAssistantMessage(message, duration = 5000) {
+  if (state.assistantTimer) {
+    window.clearTimeout(state.assistantTimer);
+  }
+
   state.bannerText = message;
   elements.assistantBanner.textContent = `Bella says: ${message}`;
+
+  if (duration > 0) {
+    state.assistantTimer = window.setTimeout(() => {
+      const fallback = state.area === "garden"
+        ? "Check your daily gift in the garden."
+        : state.area === "gallery"
+        ? "Your photo gallery saves precious care moments."
+        : state.area === "stickers"
+        ? "Collect more stickers with every healing."
+        : state.area === "treatment"
+        ? "Pick the tool that matches your diagnosis."
+        : state.area === "examination"
+        ? "Inspect symptoms and solve the diagnosis challenge."
+        : "Tap a room to visit your clinic.";
+
+      state.bannerText = fallback;
+      elements.assistantBanner.textContent = `Bella says: ${fallback}`;
+    }, duration);
+  }
+}
+
+function showAssistant(message, duration = 5000) {
+  setAssistantMessage(message, duration);
 }
 
 function setArea(area) {
@@ -322,7 +434,9 @@ function completeTreatment(toolId) {
   saveAll();
 
   state.treatmentComplete = true;
-  state.currentAnimalId = patient ? patient.id : null;
+  state.diagnosisMode = null;
+  state.miniGameComplete = false;
+  state.miniGameState = null;
   setArea("celebration");
   showAssistant("Great job! Your care helped the patient recover.");
 }
@@ -375,6 +489,9 @@ function startNewPatient() {
 
   state.currentAnimalId = saved.queue[0];
   state.diagnosisId = null;
+  state.diagnosisMode = null;
+  state.miniGameComplete = false;
+  state.miniGameState = null;
   state.treatmentChoice = null;
   state.treatmentComplete = false;
   saveAll();
@@ -502,11 +619,47 @@ function renderExamination(container) {
   });
   container.appendChild(symptomGrid);
 
+  if (state.diagnosisId) {
+    const diagnosisCard = document.createElement("div");
+    diagnosisCard.className = "card mini-game-card";
+
+    const challengeTitle = document.createElement("h3");
+    challengeTitle.textContent = "Diagnosis mini-game";
+    diagnosisCard.appendChild(challengeTitle);
+
+    const challengePrompt = document.createElement("p");
+    challengePrompt.className = "mini-game-prompt";
+    challengePrompt.textContent = state.miniGameState?.question || "Solve the diagnosis challenge to unlock treatment.";
+    diagnosisCard.appendChild(challengePrompt);
+
+    if (!state.miniGameComplete && state.miniGameState?.choices) {
+      const choiceGrid = document.createElement("div");
+      choiceGrid.className = "tile-grid two";
+      state.miniGameState.choices.forEach((choice) => {
+        const choiceButton = document.createElement("button");
+        choiceButton.type = "button";
+        choiceButton.className = "tile-button choice-button";
+        choiceButton.dataset.action = "diagnosis-choice";
+        choiceButton.dataset.choice = choice.id;
+        choiceButton.innerHTML = `<span class="tile-title">${choice.label}</span>`;
+        choiceGrid.appendChild(choiceButton);
+      });
+      diagnosisCard.appendChild(choiceGrid);
+    } else if (state.miniGameComplete) {
+      const completeText = document.createElement("p");
+      completeText.className = "feature-note";
+      completeText.textContent = "Diagnosis challenge complete. Proceed to treatment when ready.";
+      diagnosisCard.appendChild(completeText);
+    }
+
+    container.appendChild(diagnosisCard);
+  }
+
   const proceedButton = document.createElement("button");
   proceedButton.type = "button";
   proceedButton.className = "action-button primary";
-  proceedButton.textContent = state.diagnosisId ? "Proceed to treatment" : "Select a symptom first";
-  proceedButton.disabled = !state.diagnosisId;
+  proceedButton.textContent = state.miniGameComplete ? "Proceed to treatment" : "Solve diagnosis challenge";
+  proceedButton.disabled = !state.miniGameComplete;
   proceedButton.dataset.action = "go-to-treatment";
   container.appendChild(proceedButton);
 }
@@ -523,9 +676,19 @@ function renderTreatment(container) {
     return;
   }
 
+  const selectedSymptom = animal.symptoms.find((entry) => entry.id === state.diagnosisId);
   const prompt = document.createElement("p");
-  prompt.textContent = "Choose the tool that matches the symptom you found.";
+  prompt.textContent = selectedSymptom
+    ? `Diagnosis: ${selectedSymptom.title}. Choose the tool that matches.`
+    : "Choose the tool that matches the symptom you found.";
   container.appendChild(prompt);
+
+  if (state.miniGameState?.mode) {
+    const miniNote = document.createElement("p");
+    miniNote.className = "feature-note";
+    miniNote.textContent = `You solved the ${state.miniGameState.mode.replace("-", " ")} challenge.`;
+    container.appendChild(miniNote);
+  }
 
   const toolGrid = document.createElement("div");
   toolGrid.className = "tile-grid two";
@@ -692,15 +855,27 @@ function handleRootClick(event) {
     render();
   } else if (action === "preview-patient") {
     state.currentAnimalId = button.dataset.animal;
+    state.diagnosisId = null;
+    state.diagnosisMode = null;
+    state.miniGameComplete = false;
+    state.miniGameState = null;
+    state.treatmentChoice = null;
+    state.treatmentComplete = false;
     showAssistant("Previewing a different patient. Start the examination when ready.");
     render();
   } else if (action === "choose-symptom") {
-    state.diagnosisId = button.dataset.symptom;
-    showAssistant("Good eye! Now proceed to treatment.");
+    initializeDiagnosisMiniGame(button.dataset.symptom);
+    render();
+  } else if (action === "diagnosis-choice") {
+    evaluateDiagnosisChoice(button.dataset.choice);
     render();
   } else if (action === "go-to-treatment") {
     if (!state.diagnosisId) {
       showAssistant("Choose a symptom first.");
+      return;
+    }
+    if (!state.miniGameComplete) {
+      showAssistant("Finish the diagnosis challenge before treatment.");
       return;
     }
     setArea("treatment");
@@ -726,7 +901,15 @@ function handleRootClick(event) {
 function handleNavClick(event) {
   const button = event.target.closest("button[data-area]");
   if (!button) return;
-  setArea(button.dataset.area);
+  const targetArea = button.dataset.area;
+
+  if (targetArea === "treatment" && state.diagnosisId && !state.miniGameComplete) {
+    showAssistant("Finish the diagnosis challenge in examination first.");
+    setArea("examination");
+    return;
+  }
+
+  setArea(targetArea);
   showAssistant(`You are now in the ${button.textContent} room.`);
 }
 

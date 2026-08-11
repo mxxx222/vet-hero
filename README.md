@@ -12,6 +12,8 @@ Vet Hero is a production-ready, offline-first browser game for children ages 4â€
 - 6 friendly animal patients with unique needs
 - reception, examination, treatment, recovery, photo gallery, sticker collection, and garden screens
 - investigation and treatment decision flow with positive guidance
+- interactive diagnosis mini-games during examination
+- Bella assistant messages with guided tips and clear next steps
 - offline-ready play with network state updates
 - localStorage persistence for all key progression values
 - daily gift rewards and clinic decoration progression
