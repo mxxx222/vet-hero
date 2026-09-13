@@ -4,8 +4,13 @@ Vet Hero is a production-ready, offline-first browser game for children ages 4�
 
 ## Run locally
 
-1. Open `index.html` in a browser.
+1. Open **`elinlaakari-peli.html`** (recommended, single-file Finnish pilot) or `index.html` in a browser.
 2. The game loads immediately and works offline after the first load.
+
+### Validation pilot game
+
+- **File:** `elinlaakari-peli.html` — Maxin Eläinklinikka, ages 4–8, fi-FI voice
+- **QA:** Open browser console and run `window.__smokeTest()` and `window.__stressTest(100)`
 
 ## What’s included
 

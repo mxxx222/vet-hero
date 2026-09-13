@@ -1,0 +1,1861 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no"/>
+<meta name="description" content="Maxin eläinklinikka — offline-eläinlääkäripeli lapsille 4–8v"/>
+<title>Maxin Eläinklinikka</title>
+<style>
+:root{
+  --bg1:#5b8def;--bg2:#9b6fd4;--bg3:#6ee7c8;
+  --surface:#fff;--surface-soft:#f0f9ff;--border:#b8d4f0;
+  --primary:#0b5ea8;--accent:#f59e0b;--success:#16a34a;--danger-soft:#fca5a5;
+  --text:#112233;--text-soft:#475569;
+  --shadow:0 10px 30px rgba(0,0,0,.12),0 2px 8px rgba(255,255,255,.5) inset;
+  --radius:28px;--touch-min:80px;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:"Segoe UI",system-ui,sans-serif;font-size:16px;color:var(--text)}
+body{
+  min-height:100vh;overflow-x:hidden;
+  background:linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg3));
+  background-size:400% 400%;animation:gradientShift 18s ease infinite;
+}
+body.night-mode{background:linear-gradient(135deg,#1e3a5f,#2d1b4e,#0f3443);background-size:400% 400%}
+body.reduced-motion{background-size:100% 100%;animation:none!important}
+body.reduced-motion *,body.reduced-motion *::before,body.reduced-motion *::after{
+  animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important
+}
+@media(prefers-reduced-motion:reduce){
+  body{background-size:100% 100%;animation:none!important}
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+@keyframes gradientShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+@keyframes walkIn{from{transform:translateX(-120vw)}to{transform:translateX(0)}}
+@keyframes walkOut{from{transform:translateX(0)}to{transform:translateX(120vw)}}
+@keyframes ambulanceDrive{from{transform:translateX(-120vw)}to{transform:translateX(120vw)}}
+@keyframes heartPop{0%{transform:scale(0);opacity:0}50%{transform:scale(1.3);opacity:1}100%{transform:scale(1);opacity:0}}
+.heart-effect{position:absolute;font-size:3rem;animation:heartPop 1s ease forwards;pointer-events:none}
+.ambulance-banner{
+  position:fixed;top:30%;left:0;font-size:4rem;z-index:150;animation:ambulanceDrive 4s linear forwards;
+  pointer-events:none
+}
+body.reduced-motion .ambulance-banner{display:none}
+.personality-tag{
+  display:inline-block;background:var(--accent);color:#fff;font-size:.85rem;font-weight:700;
+  padding:.25rem .65rem;border-radius:999px
+}
+@keyframes starFly{to{transform:translate(var(--tx),var(--ty)) scale(.3);opacity:0}}
+@keyframes confettiFall{to{transform:translateY(110vh) rotate(720deg);opacity:0}}
+@keyframes giftPop{0%{transform:scale(0)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+@keyframes flash{0%{opacity:.6}100%{opacity:0}}
+
+body.high-contrast{
+  --surface:#000;--surface-soft:#111;--border:#fff;--primary:#ff0;--accent:#0ff;
+  --text:#fff;--text-soft:#ddd;--bg1:#000;--bg2:#111;--bg3:#222;
+}
+body.high-contrast .card,body.high-contrast button{border:3px solid #fff!important}
+body.large-touch button,body.large-touch .tool-draggable{min-height:var(--touch-min)!important;font-size:1.2rem!important;padding:1.2rem!important}
+body.large-touch .tool-draggable{min-width:var(--touch-min)!important}
+
+#parallax-bg{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.float-silhouette{position:absolute;font-size:3rem;opacity:.15;animation:floatDrift 20s linear infinite}
+body.reduced-motion .float-silhouette{display:none}
+@keyframes floatDrift{0%{transform:translate(0,0)}50%{transform:translate(30px,-20px)}100%{transform:translate(0,0)}}
+
+#app{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:.75rem;display:flex;flex-direction:column;gap:.75rem;min-height:100vh}
+
+/* HUD */
+.hud{
+  background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:1rem;display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;justify-content:space-between
+}
+.clinic-title{font-weight:900;font-size:clamp(1rem,4vw,1.35rem);color:var(--primary)}
+.hud-stats{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;font-weight:700}
+.hud-stats span{background:var(--surface-soft);border:1px solid var(--border);border-radius:16px;padding:.4rem .75rem;font-size:.95rem}
+.star-display{font-size:1.2rem;letter-spacing:2px}
+.hud-actions{display:flex;gap:.5rem;flex-wrap:wrap}
+
+/* Bella */
+.bella-bar{
+  background:linear-gradient(90deg,#ecfdf5,#dbeafe);border:2px solid var(--border);
+  border-radius:20px;padding:.85rem 1rem;display:flex;gap:.75rem;align-items:center
+}
+.bella-avatar{font-size:2.5rem;line-height:1;transition:transform .2s}
+.bella-avatar.happy{animation:bounce .6s ease}
+.bella-avatar.think{transform:rotate(-8deg)}
+.bella-text{flex:1;font-size:1rem;line-height:1.4;color:var(--text)}
+.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+
+/* Nav */
+.room-nav{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:.5rem}
+.room-btn{
+  min-height:56px;border:2px solid var(--border);border-radius:20px;background:var(--surface);
+  font-weight:700;font-size:.9rem;cursor:pointer;color:var(--primary);transition:transform .15s,border-color .15s
+}
+.room-btn:hover,.room-btn:focus-visible{border-color:var(--primary);transform:translateY(-2px)}
+.room-btn.active{border-color:var(--accent);background:#fffbeb}
+.room-btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+
+/* Main screen */
+.screen{
+  background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:1.25rem;flex:1;display:flex;flex-direction:column;gap:1rem;min-height:420px;
+  animation:screenIn .35s ease
+}
+body.reduced-motion .screen{animation:none}
+@keyframes screenIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+.card-inner{background:var(--surface-soft);border:1px solid var(--border);border-radius:24px;padding:1rem}
+h2{margin:0;font-size:1.35rem;color:var(--primary)}
+.grid-auto{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem}
+
+.btn{
+  min-height:var(--touch-min);font-size:1.2rem;font-weight:700;border:none;border-radius:22px;
+  cursor:pointer;padding:1rem 1.25rem;width:100%;transition:transform .15s,box-shadow .15s;
+  border:2px solid var(--border);background:var(--surface);color:var(--primary)
+}
+.btn:hover,.btn:focus-visible{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.12)}
+.btn-primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+.btn-secondary{background:var(--surface-soft)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-icon{display:inline-flex;align-items:center;justify-content:center;gap:.5rem}
+
+/* Animal display */
+.patient-stage{
+  display:flex;flex-direction:column;align-items:center;gap:.5rem;padding:1rem;
+  background:linear-gradient(180deg,#f0f9ff,#fff);border-radius:24px;border:2px dashed var(--border);
+  position:relative;min-height:200px
+}
+.animal-emoji{font-size:clamp(7rem,22vw,10rem);line-height:1;animation:bounce 2s ease infinite}
+body.reduced-motion .animal-emoji{animation:none}
+.animal-emoji.healed{animation:bounce .5s ease 3}
+.mood-bar{display:flex;gap:.5rem;font-size:1.8rem}
+.mood-bar .dim{opacity:.25;filter:grayscale(.8)}
+
+/* Tools D&D */
+.tool-palette{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center}
+.tool-draggable{
+  width:72px;height:72px;border-radius:20px;background:#fff;border:3px solid var(--border);
+  display:grid;place-items:center;font-size:2rem;cursor:grab;touch-action:none;user-select:none
+}
+.tool-draggable.used{opacity:.4;pointer-events:none;border-color:var(--success)}
+.tool-draggable.dragging{opacity:.8;z-index:100;position:fixed;pointer-events:none}
+.drop-hint{font-size:.95rem;color:var(--text-soft);text-align:center}
+.findings-list{display:flex;flex-direction:column;gap:.4rem}
+.finding-item{
+  display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;background:#fff;
+  border-radius:12px;border-left:4px solid var(--accent);font-size:.95rem
+}
+.finding-item .icon{font-size:1.4rem;flex-shrink:0}
+
+/* Mini-games */
+.minigame-area{background:#fff;border-radius:20px;padding:1rem;border:2px solid #cfe4fd;text-align:center}
+.heart-btn{font-size:4rem;background:none;border:none;cursor:pointer;animation:pulse 1s ease infinite}
+.thermo-slider{width:100%;height:40px;margin:1rem 0}
+.magnify-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-width:280px;margin:0 auto}
+.magnify-spot{width:100%;aspect-ratio:1;border-radius:12px;background:#e2e8f0;border:none;cursor:pointer;font-size:1.5rem}
+.magnify-spot.found{background:#fecaca}
+.magnify-spot.target:not(.found){background:#fca5a5}
+
+/* Queue NPC */
+.queue-row{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center}
+.queue-npc{
+  padding:.75rem 1rem;border-radius:18px;background:var(--surface-soft);border:2px solid var(--border);
+  font-size:1.1rem;text-align:center;min-width:80px
+}
+.queue-npc.next{border-color:var(--accent);background:#fffbeb;font-weight:700}
+.queue-npc.done{opacity:.35}
+
+/* Clinic growth */
+.clinic-visual{font-size:clamp(1.5rem,6vw,2.5rem);text-align:center;padding:.5rem}
+
+/* Paw trails */
+.paw-trail{position:fixed;font-size:1.2rem;opacity:.5;pointer-events:none;animation:fadePaw 2s forwards}
+@keyframes fadePaw{to{opacity:0}}
+
+/* Modals */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;
+  align-items:center;justify-content:center;padding:1rem
+}
+.modal{
+  background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);
+  max-width:480px;width:100%;max-height:90vh;overflow:auto;padding:1.25rem;display:flex;flex-direction:column;gap:1rem
+}
+.modal h3{margin:0;color:var(--primary)}
+.sticker-grid,.photo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:.75rem}
+.sticker-item,.photo-item{
+  text-align:center;padding:1rem;border-radius:18px;border:2px solid var(--border);background:var(--surface-soft)
+}
+.sticker-item.locked{opacity:.35;filter:grayscale(1)}
+.sticker-item .emoji{font-size:2.5rem}
+.surprise-box{font-size:5rem;text-align:center;animation:giftPop .6s ease}
+.color-canvas{border:3px solid var(--border);border-radius:16px;touch-action:none;width:100%;max-width:300px;height:200px;margin:0 auto;display:block}
+
+/* Confetti */
+.confetti-piece{position:fixed;width:10px;height:10px;z-index:300;pointer-events:none;border-radius:2px}
+.screen-flash{position:fixed;inset:0;background:#fff;pointer-events:none;z-index:250;animation:flash .4s ease forwards}
+.flying-star{position:fixed;font-size:2rem;z-index:260;pointer-events:none;animation:starFly .8s ease forwards}
+
+/* Options */
+.options-grid{display:flex;flex-direction:column;gap:.75rem}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.75rem;background:var(--surface-soft);border-radius:14px}
+.toggle-row label{font-weight:600;flex:1}
+.toggle-row input{width:24px;height:24px}
+
+/* Decorations garden */
+.deco-row{display:flex;flex-wrap:wrap;gap:.5rem;font-size:1.8rem;justify-content:center;padding:.5rem}
+.clinic-scene{
+  position:relative;min-height:180px;border-radius:24px;border:2px dashed var(--border);
+  background:linear-gradient(180deg,#ecfdf5 0%,#f0f9ff 60%,#dbeafe 100%);overflow:hidden;touch-action:none
+}
+.clinic-scene-base{font-size:3rem;position:absolute;left:50%;bottom:12px;transform:translateX(-50%);pointer-events:none;z-index:1}
+.placed-deco{
+  position:absolute;font-size:2rem;cursor:grab;touch-action:none;z-index:2;
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,.15));transform:translate(-50%,-50%)
+}
+.placed-deco.selected{outline:3px solid var(--accent);border-radius:12px}
+.deco-palette{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;padding:.5rem}
+.deco-chip{
+  font-size:2rem;padding:.5rem .75rem;border-radius:16px;border:2px solid var(--border);
+  background:#fff;cursor:pointer;min-width:56px;min-height:56px
+}
+.deco-chip.selected{border-color:var(--accent);background:#fffbeb;box-shadow:0 0 0 3px rgba(245,158,11,.35)}
+.deco-chip.empty{opacity:.35;cursor:not-allowed}
+.clinic-scene.placing{cursor:crosshair;border-color:var(--accent)}
+
+/* World map */
+.world-map{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem}
+.map-location{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.4rem;
+  min-height:120px;text-align:center;height:auto;width:100%
+}
+body.large-touch .map-location{min-height:var(--touch-min)}
+.map-label{font-size:1.15rem;font-weight:700;display:block;color:var(--primary)}
+.map-sublabel{font-size:.9rem;color:var(--text-soft);display:block}
+.map-clinic-preview{
+  position:relative;width:100%;max-width:150px;height:58px;border-radius:14px;
+  border:1px solid var(--border);background:linear-gradient(180deg,#ecfdf5,#dbeafe);
+  overflow:hidden;flex-shrink:0
+}
+.map-clinic-base{position:absolute;left:50%;bottom:3px;transform:translateX(-50%);font-size:1.35rem;line-height:1}
+.map-deco-dot{position:absolute;font-size:.7rem;transform:translate(-50%,-50%);line-height:1;pointer-events:none}
+
+@media(max-width:640px){
+  .grid-2{grid-template-columns:1fr}
+  .room-nav{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<div id="parallax-bg" aria-hidden="true"></div>
+<div id="app" role="application" aria-label="Maxin eläinklinikka">
+  <header class="hud">
+    <div class="clinic-title">🏥 MAXIN ELÄINKLINIKKA</div>
+    <div class="hud-stats">
+      <span id="stat-cured">Parannetut: 0/5</span>
+      <span class="star-display" id="stat-stars" aria-label="Tähdet">☆☆☆</span>
+      <span id="stat-clinic" class="clinic-visual">🏥</span>
+    </div>
+    <div class="hud-actions">
+      <button type="button" class="btn btn-secondary btn-icon" id="btn-collection" style="min-height:56px;font-size:1rem;width:auto">🎖️ Kokoelma</button>
+      <button type="button" class="btn btn-secondary btn-icon" id="btn-album" style="min-height:56px;font-size:1rem;width:auto">📸 Albumi</button>
+      <button type="button" class="btn btn-secondary btn-icon" id="btn-options" style="min-height:56px;font-size:1rem;width:auto" aria-label="Asetukset">⚙️</button>
+    </div>
+  </header>
+
+  <div class="bella-bar" role="status" aria-live="polite">
+    <div class="bella-avatar" id="bella-face" aria-hidden="true">🦜</div>
+    <p class="bella-text" id="bella-text">Tervetuloa klinikalle! Bella auttaa sinua.</p>
+  </div>
+
+  <nav class="room-nav" aria-label="Huoneet">
+    <button type="button" class="room-btn active" data-room="reception">🏠 Vastaanotto</button>
+    <button type="button" class="room-btn" data-room="examination">🩺 Tutkimus</button>
+    <button type="button" class="room-btn" data-room="treatment">💊 Hoito</button>
+    <button type="button" class="room-btn" data-room="garden" data-speak="Piha">🌳 Piha</button>
+    <button type="button" class="room-btn" data-room="map" data-speak="Klinikan kartta">🗺️ Kartta</button>
+  </nav>
+
+  <main id="screen" class="screen" aria-live="polite"></main>
+</div>
+
+<div id="modal-root"></div>
+
+<script>
+"use strict";
+
+// ============================================================================
+// CONFIG
+// ============================================================================
+const CONFIG = {
+  SAVE_VERSION: 2,
+  USE_PILOT_MODE: true,
+  MIN_TOOLS_REQUIRED: 2,
+  MINIGAME_MAX_MS: 15000,
+  CONFETTI_COUNT: 40,
+  CONFETTI_COUNT_REDUCED: 6,
+  CLINIC_GROWTH: { flower: 3, tree: 10, balloon: 25 },
+  STAR_THRESHOLDS: [1, 3, 5],
+  NIGHT_START: 20,
+  NIGHT_END: 7,
+  COLOR_REWARD_SECONDS: 10,
+  HEARTBEAT_BEATS: 6,
+  HEARTBEAT_TOLERANCE_MS: 350,
+  THERMO_TOLERANCE: 5,
+  MAGNIFY_SPOTS: 5
+};
+
+const STORAGE_KEYS = {
+  legacy: { stars: "vetStars", cured: "vetCured", photos: "vetPhotos", decos: "vetDecos", dailyGift: "vetDailyGift" },
+  bundle: "vetHeroSaveBundle",
+  a11y: "vetHeroA11y",
+  curedAnimals: "vetHeroCuredAnimals",
+  decorations: "vetHeroDecorations",
+  placedDecorations: "vetHeroPlacedDecorations",
+  decoInventory: "vetHeroDecoInventory",
+  pilotIndex: "vetHeroPilotIndex"
+};
+
+// ============================================================================
+// REGISTRY (immutable source data)
+// ============================================================================
+const ANIMALS = Object.freeze([
+  {
+    id: "cat", emoji: "🐱", name: "Mimi-kissa", sound: "Miau…", personality: "Ujo, kehrää usein",
+    favorite: "Kala", voicePhrase: "Miau miau…",
+    symptoms: Object.freeze([
+      { id: "ear", icon: "👂", hint: "Korvassa näkyy punoitusta.", toolHint: "magnifying_glass", finding: "Korva punoittaa." },
+      { id: "fever", icon: "🌡️", hint: "Lämpöä 39,8°C.", toolHint: "thermometer", finding: "Kuumeinen." }
+    ]),
+    treatments: Object.freeze([
+      { id: "spray", icon: "💨", label: "Suihke" },
+      { id: "medicine", icon: "💊", label: "Lääke" },
+      { id: "water", icon: "💧", label: "Vesi" },
+      { id: "cuddle", icon: "🤗", label: "Halitus" },
+      { id: "bandage", icon: "🩹", label: "Side" },
+      { id: "rest", icon: "😴", label: "Lepo" }
+    ]),
+    solutions: Object.freeze({ ear: "spray", fever: "medicine" })
+  },
+  {
+    id: "dog", emoji: "🐶", name: "Rex-koira", sound: "Au au!", personality: "Energinen, tykkää luista",
+    favorite: "Luu", voicePhrase: "Hau hau!",
+    symptoms: Object.freeze([
+      { id: "heart", icon: "❤️", hint: "Sydän kuulostaa nopealta.", toolHint: "stethoscope", finding: "Nopea syke." },
+      { id: "paw", icon: "🐾", hint: "Etutassu on kipeä.", toolHint: "magnifying_glass", finding: "Tassu punoittaa." }
+    ]),
+    treatments: Object.freeze([
+      { id: "bandage", icon: "🩹", label: "Side" },
+      { id: "medicine", icon: "💊", label: "Lääke" },
+      { id: "water", icon: "💧", label: "Vesi" },
+      { id: "cuddle", icon: "🤗", label: "Halitus" },
+      { id: "spray", icon: "💨", label: "Suihke" },
+      { id: "rest", icon: "😴", label: "Lepo" }
+    ]),
+    solutions: Object.freeze({ heart: "rest", paw: "bandage" })
+  },
+  {
+    id: "bunny", emoji: "🐰", name: "Pekka-pupu", sound: "…", personality: "Utelias, pomppii",
+    favorite: "Porkkana", voicePhrase: "Hypp hypp!",
+    symptoms: Object.freeze([
+      { id: "fever", icon: "🌡️", hint: "Lämpöä 39,5°C.", toolHint: "thermometer", finding: "Lievä kuume." },
+      { id: "tummy", icon: "🫄", hint: "Vatsa on arka.", toolHint: "stethoscope", finding: "Vatsa murisee." }
+    ]),
+    treatments: Object.freeze([
+      { id: "medicine", icon: "💊", label: "Lääke" },
+      { id: "water", icon: "💧", label: "Vesi" },
+      { id: "cuddle", icon: "🤗", label: "Halitus" },
+      { id: "bandage", icon: "🩹", label: "Side" },
+      { id: "spray", icon: "💨", label: "Suihke" },
+      { id: "rest", icon: "😴", label: "Lepo" }
+    ]),
+    solutions: Object.freeze({ fever: "medicine", tummy: "cuddle" })
+  },
+  {
+    id: "bird", emoji: "🐦", name: "Tiku-lintu", sound: "Piip piip…", personality: "Laulavainen",
+    favorite: "Siemen", voicePhrase: "Piip piip!",
+    symptoms: Object.freeze([
+      { id: "wing", icon: "🪽", hint: "Siiven alla punoitusta.", toolHint: "magnifying_glass", finding: "Siipi arka." },
+      { id: "cold", icon: "❄️", hint: "Lintu vapisee.", toolHint: "thermometer", finding: "Kylmä." }
+    ]),
+    treatments: Object.freeze([
+      { id: "bandage", icon: "🩹", label: "Side" },
+      { id: "cuddle", icon: "🤗", label: "Lämmitin" },
+      { id: "water", icon: "💧", label: "Vesi" },
+      { id: "medicine", icon: "💊", label: "Lääke" },
+      { id: "spray", icon: "💨", label: "Suihke" },
+      { id: "rest", icon: "😴", label: "Lepo" }
+    ]),
+    solutions: Object.freeze({ wing: "bandage", cold: "cuddle" })
+  },
+  {
+    id: "fish", emoji: "🐠", name: "Nemo-kala", sound: "…blub…", personality: "Ujo, ujuvat hiljaa",
+    favorite: "Levä", voicePhrase: "Blub blub…",
+    symptoms: Object.freeze([
+      { id: "scales", icon: "✨", hint: "Suomut näyttävät sameilta.", toolHint: "magnifying_glass", finding: "Sameat suomut." },
+      { id: "heart", icon: "❤️", hint: "Sydän sykkii hitaasti.", toolHint: "stethoscope", finding: "Hidas syke." }
+    ]),
+    treatments: Object.freeze([
+      { id: "water", icon: "💧", label: "Puhdas vesi" },
+      { id: "medicine", icon: "💊", label: "Lääke" },
+      { id: "spray", icon: "💨", label: "Suihke" },
+      { id: "cuddle", icon: "🤗", label: "Rauhoitus" },
+      { id: "bandage", icon: "🩹", label: "Side" },
+      { id: "rest", icon: "😴", label: "Lepo" }
+    ]),
+    solutions: Object.freeze({ scales: "spray", heart: "water" })
+  }
+]);
+
+const STICKERS = Object.freeze([
+  { id: "cat", emoji: "🐱", title: "Kissa-tarra", animalId: "cat" },
+  { id: "dog", emoji: "🐶", title: "Koira-tarra", animalId: "dog" },
+  { id: "bunny", emoji: "🐰", title: "Pupu-tarra", animalId: "bunny" },
+  { id: "bird", emoji: "🐦", title: "Lintu-tarra", animalId: "bird" },
+  { id: "fish", emoji: "🐠", title: "Kala-tarra", animalId: "fish" }
+]);
+
+const TOOLS = Object.freeze([
+  { id: "stethoscope", emoji: "🩺", speak: "Kuunnellaan sydäntä!", sound: "dumdum" },
+  { id: "thermometer", emoji: "🌡️", speak: "Mitataan lämpö!", sound: "beep" },
+  { id: "magnifying_glass", emoji: "🔍", speak: "Tutkitaan tarkasti!", sound: "hmm" }
+]);
+
+const REWARDS = Object.freeze([
+  { id: "star", emoji: "⭐", label: "Tähti" },
+  { id: "bone", emoji: "🦴", label: "Luu" },
+  { id: "bow", emoji: "🎀", label: "Rusetti" },
+  { id: "apple", emoji: "🍎", label: "Herkku" },
+  { id: "trophy", emoji: "🏆", label: "Pokaali" }
+]);
+
+const DECO_ITEMS = Object.freeze(["🌷", "🧸", "🎈", "🖼️"]);
+
+const EDU_FACTS = Object.freeze([
+  "Sydän pumputtaa verta koko kehossa.",
+  "Lämpö kertoo onko eläin kuumeessa.",
+  "Lääke auttaa eläintä paranemaan.",
+  "Terve eläin on iloinen ja leikkii.",
+  "Eläinlääkäri auttaa eläimiä.",
+  "Eläimet tarvitsevat lepoa toipuakseen.",
+  "Ystävällisyys tekee hoidosta helppoa.",
+  "Puhdas vesi on tärkeää.",
+  "Side suojaa haavaa.",
+  "Huolenpito on parasta hoitoa."
+]);
+
+const PILOT_CASES = Object.freeze([
+  { id: "pilot-1", animalId: "dog", symptomId: "paw", requiredTools: ["magnifying_glass", "stethoscope"], treatment: "bandage" },
+  { id: "pilot-2", animalId: "cat", symptomId: "ear", requiredTools: ["magnifying_glass", "thermometer"], treatment: "spray" },
+  { id: "pilot-3", animalId: "bunny", symptomId: "fever", requiredTools: ["thermometer", "stethoscope"], treatment: "medicine" },
+  { id: "pilot-4", animalId: "bird", symptomId: "wing", requiredTools: ["magnifying_glass", "stethoscope"], treatment: "bandage" },
+  { id: "pilot-5", animalId: "fish", symptomId: "scales", requiredTools: ["magnifying_glass", "thermometer"], treatment: "spray" }
+]);
+
+const MOODS = Object.freeze(["sad", "neutral", "happy", "healed"]);
+const MOOD_EMOJI = Object.freeze({ sad: "😢", neutral: "😐", happy: "🙂", healed: "😄" });
+
+const GAME_STATE = Object.freeze({
+  BOOT: "boot", RECEPTION: "reception", PATIENT_ENTRY: "patient_entry",
+  EXAMINATION: "examination", MINIGAME: "minigame", TREATMENT: "treatment",
+  RECOVERY: "recovery", REWARD: "reward", GARDEN: "garden", MAP: "map"
+});
+
+const VALID_TRANSITIONS = Object.freeze({
+  boot: ["reception"],
+  reception: ["patient_entry", "examination", "garden", "map"],
+  patient_entry: ["examination", "map"],
+  examination: ["minigame", "treatment", "reception", "map"],
+  minigame: ["examination", "treatment", "map"],
+  treatment: ["recovery", "examination", "map"],
+  recovery: ["reward", "map"],
+  reward: ["reception", "patient_entry", "map"],
+  garden: ["reception", "map"],
+  map: ["reception", "garden", "examination", "treatment"]
+});
+
+const EVT = Object.freeze({
+  PATIENT_ARRIVED: "patient_arrived", DIAGNOSIS_COMPLETE: "diagnosis_complete",
+  MINIGAME_COMPLETE: "minigame_complete", TREATMENT_COMPLETE: "treatment_complete",
+  STAR_GAINED: "star_gained", PHOTO_CAPTURED: "photo_captured",
+  STICKER_UNLOCKED: "sticker_unlocked", GAME_SAVED: "game_saved", PHASE_CHANGED: "phase_changed"
+});
+
+// ============================================================================
+// SafeStore
+// ============================================================================
+const SafeStore = {
+  available: (() => { try { localStorage.setItem("__t", "1"); localStorage.removeItem("__t"); return true; } catch { return false; } })(),
+  getRaw(key) { if (!this.available) return null; try { return localStorage.getItem(key); } catch { return null; } },
+  setRaw(key, val) { if (!this.available) return false; try { localStorage.setItem(key, val); return true; } catch { return false; } },
+  getJSON(key, fallback) {
+    const raw = this.getRaw(key);
+    if (raw == null) return fallback;
+    try { const p = JSON.parse(raw); return p ?? fallback; } catch { return fallback; }
+  },
+  getInt(key, fallback = 0) {
+    const raw = this.getRaw(key);
+    if (raw == null) return fallback;
+    const n = parseInt(raw, 10);
+    return Number.isNaN(n) ? fallback : n;
+  }
+};
+
+function migrateDataVersion(bundle) {
+  if (!bundle || typeof bundle !== "object") return createDefaultSave();
+  const v = bundle.version || 1;
+  if (v >= CONFIG.SAVE_VERSION) return bundle;
+  return { ...createDefaultSave(), ...bundle, version: CONFIG.SAVE_VERSION };
+}
+
+function createDefaultSave() {
+  return {
+    version: CONFIG.SAVE_VERSION,
+    stars: 0, cured: 0, photos: 0, decos: 0, dailyGift: "never",
+    stickerIds: [], photoAlbum: [], curedAnimalIds: [], decorations: [],
+    decoInventory: [], placedDecorations: [],
+    mapVisited: false,
+    queue: ANIMALS.map(a => a.id), pilotIndex: 0, recentRewards: []
+  };
+}
+
+function migrateDecorations(bundle) {
+  if (!Array.isArray(bundle.decoInventory)) bundle.decoInventory = [];
+  if (!Array.isArray(bundle.placedDecorations)) bundle.placedDecorations = [];
+  if (Array.isArray(bundle.decorations)) {
+    bundle.decorations.forEach(item => {
+      if (typeof item === "string") bundle.decoInventory.push(item);
+    });
+  }
+  bundle.placedDecorations = bundle.placedDecorations.filter(
+    d => d && typeof d.emoji === "string" && typeof d.x === "number"
+  );
+  return bundle;
+}
+
+function loadSave() {
+  let bundle = SafeStore.getJSON(STORAGE_KEYS.bundle, null);
+  if (bundle) {
+    bundle = migrateDataVersion(bundle);
+  } else {
+    bundle = createDefaultSave();
+    bundle.stars = SafeStore.getInt(STORAGE_KEYS.legacy.stars, 0);
+    bundle.cured = SafeStore.getInt(STORAGE_KEYS.legacy.cured, 0);
+    bundle.photos = SafeStore.getInt(STORAGE_KEYS.legacy.photos, 0);
+    bundle.decos = SafeStore.getInt(STORAGE_KEYS.legacy.decos, 0);
+    const dg = SafeStore.getRaw(STORAGE_KEYS.legacy.dailyGift);
+    bundle.dailyGift = dg && /^\d{4}-\d{2}-\d{2}$/.test(dg) ? dg : "never";
+    bundle.stickerIds = SafeStore.getJSON("vetHeroStickerIds", []) || [];
+    bundle.photoAlbum = SafeStore.getJSON("vetHeroPhotoAlbum", []) || [];
+    bundle.curedAnimalIds = SafeStore.getJSON(STORAGE_KEYS.curedAnimals, []) || [];
+    bundle.decorations = SafeStore.getJSON(STORAGE_KEYS.decorations, []) || [];
+  }
+  if (!Array.isArray(bundle.queue) || !bundle.queue.length) bundle.queue = shuffle(ANIMALS.map(a => a.id));
+  if (!Array.isArray(bundle.stickerIds)) bundle.stickerIds = [];
+  if (!Array.isArray(bundle.photoAlbum)) bundle.photoAlbum = [];
+  if (!Array.isArray(bundle.curedAnimalIds)) bundle.curedAnimalIds = [];
+  if (!Array.isArray(bundle.decorations)) bundle.decorations = [];
+  if (!Array.isArray(bundle.recentRewards)) bundle.recentRewards = [];
+  if (typeof bundle.mapVisited !== "boolean") bundle.mapVisited = false;
+  migrateDecorations(bundle);
+  return bundle;
+}
+
+function saveGame() {
+  const b = saved;
+  SafeStore.setRaw(STORAGE_KEYS.bundle, JSON.stringify(b));
+  SafeStore.setRaw(STORAGE_KEYS.legacy.stars, String(b.stars));
+  SafeStore.setRaw(STORAGE_KEYS.legacy.cured, String(b.cured));
+  SafeStore.setRaw(STORAGE_KEYS.legacy.photos, String(b.photos));
+  SafeStore.setRaw(STORAGE_KEYS.legacy.decos, String(b.decos));
+  SafeStore.setRaw(STORAGE_KEYS.legacy.dailyGift, b.dailyGift);
+  SafeStore.setRaw(STORAGE_KEYS.curedAnimals, JSON.stringify(b.curedAnimalIds));
+  SafeStore.setRaw(STORAGE_KEYS.decorations, JSON.stringify(b.decorations));
+  SafeStore.setRaw(STORAGE_KEYS.placedDecorations, JSON.stringify(b.placedDecorations));
+  SafeStore.setRaw(STORAGE_KEYS.decoInventory, JSON.stringify(b.decoInventory));
+  EventBus.emit(EVT.GAME_SAVED);
+}
+
+// ============================================================================
+// EventBus
+// ============================================================================
+const EventBus = {
+  _h: {},
+  on(ev, fn) { (this._h[ev] = this._h[ev] || []).push(fn); },
+  off(ev, fn) { if (!this._h[ev]) return; this._h[ev] = this._h[ev].filter(f => f !== fn); },
+  emit(ev, data) { (this._h[ev] || []).forEach(fn => { try { fn(data); } catch (e) { console.warn(ev, e); } }); }
+};
+
+// ============================================================================
+// StateMachine
+// ============================================================================
+const StateMachine = {
+  current: GAME_STATE.BOOT,
+  transition(next) {
+    const allowed = VALID_TRANSITIONS[this.current];
+    if (!allowed || !allowed.includes(next)) {
+      console.warn(`Invalid transition ${this.current} -> ${next}`);
+      return false;
+    }
+    this.current = next;
+    gameState.phase = next;
+    EventBus.emit(EVT.PHASE_CHANGED, next);
+    return true;
+  }
+};
+
+// ============================================================================
+// gameState
+// ============================================================================
+const saved = loadSave();
+const gameState = {
+  phase: GAME_STATE.BOOT,
+  room: "reception",
+  currentAnimalId: null,
+  activeCase: null,
+  symptomId: null,
+  toolsUsed: [],
+  findings: [],
+  miniGame: null,
+  mood: "sad",
+  dragTool: null,
+  pilotIndex: saved.pilotIndex || 0,
+  a11y: { reducedMotion: false, highContrast: false, largeTouch: false, muted: false },
+  timers: [],
+  walking: false,
+  walkingOut: false,
+  selectedDeco: null
+};
+
+// ============================================================================
+// Utilities
+// ============================================================================
+function $(sel) { return document.querySelector(sel); }
+function shuffle(arr) { const c = arr.slice(); for (let i = c.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [c[i], c[j]] = [c[j], c[i]]; } return c; }
+function todayStr() { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; }
+function getAnimal(id) { return ANIMALS.find(a => a.id === id) || null; }
+function getCurrentAnimal() { return getAnimal(gameState.currentAnimalId || saved.queue[0]); }
+function getStarDisplay() {
+  const unique = saved.curedAnimalIds.length;
+  saved.stars = Math.max(saved.stars, unique);
+  SafeStore.setRaw(STORAGE_KEYS.legacy.stars, String(saved.stars));
+  if (unique >= 5) return "⭐⭐⭐";
+  if (unique >= 3) return "⭐⭐";
+  if (unique >= 1) return "⭐";
+  return "☆☆☆";
+}
+function getClinicVisual() {
+  let v = "🏥";
+  if (saved.cured >= CONFIG.CLINIC_GROWTH.flower) v += "🌷";
+  if (saved.cured >= CONFIG.CLINIC_GROWTH.tree) v += "🌳";
+  if (saved.decos >= CONFIG.CLINIC_GROWTH.balloon || saved.photos >= 5) v += "🎈";
+  return v;
+}
+function registerTimer(id) { gameState.timers.push(id); return id; }
+function clearAllTimers() {
+  gameState.timers.forEach(t => { clearTimeout(t); clearInterval(t); });
+  gameState.timers = [];
+}
+function getEduFact() { return EDU_FACTS[Math.floor(Math.random() * EDU_FACTS.length)]; }
+
+function cloneCaseFromPilot(pilotCase) {
+  const animal = getAnimal(pilotCase.animalId);
+  if (!animal) return null;
+  const symptom = animal.symptoms.find(s => s.id === pilotCase.symptomId);
+  return {
+    animalId: pilotCase.animalId,
+    symptomId: pilotCase.symptomId,
+    requiredTools: pilotCase.requiredTools.slice(),
+    treatment: pilotCase.treatment,
+    symptom: symptom ? { ...symptom } : null
+  };
+}
+
+function getNextCase() {
+  if (CONFIG.USE_PILOT_MODE) {
+    const pc = PILOT_CASES[gameState.pilotIndex % PILOT_CASES.length];
+    gameState.pilotIndex = (gameState.pilotIndex + 1) % PILOT_CASES.length;
+    saved.pilotIndex = gameState.pilotIndex;
+    return cloneCaseFromPilot(pc);
+  }
+  const id = saved.queue[0];
+  const animal = getAnimal(id);
+  if (!animal) return null;
+  const symptom = animal.symptoms[Math.floor(Math.random() * animal.symptoms.length)];
+  const tools = shuffle(TOOLS.map(t => t.id)).slice(0, 2);
+  return {
+    animalId: id, symptomId: symptom.id, requiredTools: tools,
+    treatment: animal.solutions[symptom.id], symptom: { ...symptom }
+  };
+}
+
+// ============================================================================
+// AudioMgr
+// ============================================================================
+const AudioMgr = {
+  ctx: null, muted: false, unlocked: false, speaking: false,
+  init() {
+    try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { this.ctx = null; }
+  },
+  unlock() {
+    if (this.unlocked) return;
+    this.unlocked = true;
+    if (this.ctx && this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
+  },
+  playTone(freq, dur, type = "sine", vol = 0.15) {
+    if (this.muted || !this.ctx) return;
+    try {
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = type; o.frequency.value = freq;
+      g.gain.setValueAtTime(vol, this.ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+      o.connect(g); g.connect(this.ctx.destination);
+      o.start(); o.stop(this.ctx.currentTime + dur);
+    } catch { /* graceful */ }
+  },
+  chime() { this.playTone(880, 0.15); setTimeout(() => this.playTone(1100, 0.2), 80); },
+  ups() { this.playTone(220, 0.25, "triangle", 0.1); },
+  fanfare() {
+    [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => this.playTone(f, 0.2), i * 120));
+  },
+  beep() { this.playTone(1200, 0.08, "square", 0.08); },
+  dumdum() { this.playTone(80, 0.12, "sine", 0.2); setTimeout(() => this.playTone(80, 0.12, "sine", 0.2), 200); },
+  roomMusic(room) {
+    if (this.muted || gameState.a11y.reducedMotion) return;
+    if (room === "examination") { this.playTone(660, 0.1); setTimeout(() => this.playTone(660, 0.1), 400); }
+    else if (room === "treatment") { this.playTone(784, 0.08); setTimeout(() => this.playTone(784, 0.08), 150); setTimeout(() => this.playTone(784, 0.08), 300); }
+  },
+  speak(text, rate = 0.92) {
+    if (this.muted || !text) return;
+    if (!("speechSynthesis" in window)) { showSpeechFallback(text); return; }
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "fi-FI"; u.rate = rate;
+      const voices = speechSynthesis.getVoices();
+      const fi = voices.find(v => v.lang.startsWith("fi"));
+      if (fi) u.voice = fi;
+      u.onend = () => { this.speaking = false; };
+      this.speaking = true;
+      speechSynthesis.speak(u);
+    } catch { showSpeechFallback(text); }
+  },
+  animalSound(animal) { if (animal) this.speak(animal.sound, 1.1); }
+};
+
+function showSpeechFallback(text) {
+  const el = $("#bella-text");
+  if (el) el.textContent = "🦜 " + text;
+}
+
+// ============================================================================
+// AnimMgr
+// ============================================================================
+const AnimMgr = {
+  confettiNodes: [],
+  launchConfetti(count) {
+    if (gameState.a11y.reducedMotion) count = CONFIG.CONFETTI_COUNT_REDUCED;
+    const colors = ["#f59e0b", "#3b82f6", "#ec4899", "#22c55e", "#a855f7"];
+    for (let i = 0; i < count; i++) {
+      const p = document.createElement("div");
+      p.className = "confetti-piece";
+      p.style.left = Math.random() * 100 + "vw";
+      p.style.top = "-10px";
+      p.style.background = colors[i % colors.length];
+      p.style.animation = `confettiFall ${1.5 + Math.random()}s linear forwards`;
+      document.body.appendChild(p);
+      this.confettiNodes.push(p);
+      registerTimer(setTimeout(() => { p.remove(); }, 2500));
+    }
+    registerTimer(setTimeout(() => this.cleanupConfetti(), 3000));
+  },
+  cleanupConfetti() {
+    this.confettiNodes.forEach(n => n.remove());
+    this.confettiNodes = [];
+  },
+  screenFlash() {
+    if (gameState.a11y.reducedMotion) return;
+    const f = document.createElement("div");
+    f.className = "screen-flash";
+    document.body.appendChild(f);
+    registerTimer(setTimeout(() => f.remove(), 500));
+  },
+  starFly(fromEl) {
+    if (gameState.a11y.reducedMotion) { saved.stars++; updateHUD(); return; }
+    const star = document.createElement("div");
+    star.className = "flying-star";
+    star.textContent = "⭐";
+    const rect = fromEl ? fromEl.getBoundingClientRect() : { left: innerWidth/2, top: innerHeight/2 };
+    const target = $("#stat-stars");
+    const tr = target ? target.getBoundingClientRect() : { left: 50, top: 0 };
+    star.style.left = rect.left + "px";
+    star.style.top = rect.top + "px";
+    star.style.setProperty("--tx", (tr.left - rect.left) + "px");
+    star.style.setProperty("--ty", (tr.top - rect.top) + "px");
+    document.body.appendChild(star);
+    AudioMgr.beep();
+    registerTimer(setTimeout(() => star.remove(), 900));
+  },
+  pawTrail(x, y) {
+    if (gameState.a11y.reducedMotion) return;
+    const p = document.createElement("div");
+    p.className = "paw-trail";
+    p.textContent = "🐾";
+    p.style.left = x + "px"; p.style.top = y + "px";
+    document.body.appendChild(p);
+    registerTimer(setTimeout(() => p.remove(), 2000));
+  },
+  walkWithPaws(durationMs, direction) {
+    if (gameState.a11y.reducedMotion) return null;
+    const startY = innerHeight * 0.55;
+    let x = direction === "in" ? -40 : innerWidth * 0.35;
+    const endX = direction === "in" ? innerWidth * 0.35 : innerWidth + 40;
+    const steps = Math.floor(durationMs / 200);
+    let step = 0;
+    const interval = setInterval(() => {
+      x += (endX - (direction === "in" ? -40 : innerWidth * 0.35)) / steps;
+      this.pawTrail(x, startY + (Math.random() * 20 - 10));
+      step++;
+      if (step >= steps) clearInterval(interval);
+    }, 200);
+    registerTimer(interval);
+    return interval;
+  },
+  showAmbulance() {
+    if (gameState.a11y.reducedMotion) return;
+    const amb = document.createElement("div");
+    amb.className = "ambulance-banner";
+    amb.textContent = "🚑";
+    amb.setAttribute("aria-hidden", "true");
+    document.body.appendChild(amb);
+    AudioMgr.playTone(440, 0.15);
+    registerTimer(setTimeout(() => amb.remove(), 4200));
+  },
+  heartEffect(container) {
+    if (!container || gameState.a11y.reducedMotion) return;
+    const h = document.createElement("div");
+    h.className = "heart-effect";
+    h.textContent = "❤️";
+    h.style.left = "50%"; h.style.top = "30%";
+    container.appendChild(h);
+    registerTimer(setTimeout(() => h.remove(), 1100));
+  },
+  setParallax(x, y) {
+    if (gameState.a11y.reducedMotion) return;
+    const bg = $("#parallax-bg");
+    if (!bg) return;
+    const dx = (x / innerWidth - 0.5) * 20;
+    const dy = (y / innerHeight - 0.5) * 10;
+    bg.style.transform = `translate(${dx}px,${dy}px)`;
+  },
+  cleanup() { this.cleanupConfetti(); }
+};
+
+// ============================================================================
+// Accessibility
+// ============================================================================
+const Accessibility = {
+  load() {
+    const stored = SafeStore.getJSON(STORAGE_KEYS.a11y, null);
+    if (stored) Object.assign(gameState.a11y, stored);
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (mq.matches) gameState.a11y.reducedMotion = true;
+    this.apply();
+  },
+  save() { SafeStore.setRaw(STORAGE_KEYS.a11y, JSON.stringify(gameState.a11y)); this.apply(); },
+  apply() {
+    document.body.classList.toggle("reduced-motion", gameState.a11y.reducedMotion);
+    document.body.classList.toggle("high-contrast", gameState.a11y.highContrast);
+    document.body.classList.toggle("large-touch", gameState.a11y.largeTouch);
+    AudioMgr.muted = gameState.a11y.muted;
+  },
+  toggle(key) {
+    gameState.a11y[key] = !gameState.a11y[key];
+    this.save();
+  }
+};
+
+// ============================================================================
+// Bella
+// ============================================================================
+function bellaSay(text, mood = "neutral", alsoSpeak = true) {
+  const face = $("#bella-face");
+  const txt = $("#bella-text");
+  if (face) {
+    face.classList.remove("happy", "think");
+    if (mood === "happy") face.classList.add("happy");
+    if (mood === "think") face.classList.add("think");
+  }
+  if (txt) txt.textContent = "🦜 " + text;
+  if (alsoSpeak && !gameState.a11y.muted) AudioMgr.speak(text);
+}
+
+// ============================================================================
+// MiniGames
+// ============================================================================
+const MiniGames = {
+  active: null,
+  cleanup() {
+    if (this.active && this.active.cleanup) this.active.cleanup();
+    this.active = null;
+    gameState.miniGame = null;
+  },
+  start(toolId, onComplete) {
+    this.cleanup();
+    if (toolId === "stethoscope") this.startHeartbeat(onComplete);
+    else if (toolId === "thermometer") this.startThermometer(onComplete);
+    else if (toolId === "magnifying_glass") this.startMagnify(onComplete);
+  },
+  startHeartbeat(onComplete) {
+    const bpm = 90;
+    const interval = 60000 / bpm;
+    let beats = 0;
+    let nextBeat = Date.now() + interval;
+    let beatTimer = null;
+    const area = document.createElement("div");
+    area.className = "minigame-area";
+    area.innerHTML = `<p>Paina sydäntä tahdissa! ❤️</p><button type="button" class="heart-btn" id="heart-tap">❤️</button><p id="heart-progress">0 / ${CONFIG.HEARTBEAT_BEATS}</p>`;
+    const container = $("#minigame-slot");
+    if (container) { container.innerHTML = ""; container.appendChild(area); }
+    AudioMgr.dumdum();
+    const btn = area.querySelector("#heart-tap");
+    const prog = area.querySelector("#heart-progress");
+    beatTimer = setInterval(() => { nextBeat = Date.now() + interval; AudioMgr.dumdum(); }, interval);
+    registerTimer(beatTimer);
+    btn.addEventListener("click", () => {
+      const diff = Math.abs(Date.now() - nextBeat);
+      if (diff < CONFIG.HEARTBEAT_TOLERANCE_MS || beats === 0) {
+        beats++;
+        prog.textContent = `${beats} / ${CONFIG.HEARTBEAT_BEATS}`;
+        AudioMgr.chime();
+        if (beats >= CONFIG.HEARTBEAT_BEATS) {
+          clearInterval(beatTimer);
+          bellaSay("Hyvä tutkimus!", "happy");
+          registerTimer(setTimeout(() => onComplete(), 800));
+        }
+      } else {
+        bellaSay("Kokeillaan uudelleen!", "think");
+      }
+    });
+    this.active = { cleanup: () => clearInterval(beatTimer) };
+    registerTimer(setTimeout(() => {
+      if (beats < CONFIG.HEARTBEAT_BEATS) { clearInterval(beatTimer); onComplete(); bellaSay("Hyvä yritys!", "happy"); }
+    }, CONFIG.MINIGAME_MAX_MS));
+  },
+  startThermometer(onComplete) {
+    const ac = gameState.activeCase;
+    const target = ac?.symptomId === "fever" ? 39.8 : ac?.symptomId === "cold" ? 36.5 : 39.0;
+    const area = document.createElement("div");
+    area.className = "minigame-area";
+    area.innerHTML = `<p>Vedä lämpö oikeaan kohtaan 🌡️</p>
+      <input type="range" class="thermo-slider" id="thermo-range" min="35" max="42" step="0.1" value="36"/>
+      <p id="thermo-val">36,0 °C</p><button type="button" class="btn btn-primary" id="thermo-ok">Valmis!</button>`;
+    const container = $("#minigame-slot");
+    if (container) { container.innerHTML = ""; container.appendChild(area); }
+    const range = area.querySelector("#thermo-range");
+    const val = area.querySelector("#thermo-val");
+    range.addEventListener("input", () => { val.textContent = parseFloat(range.value).toFixed(1) + " °C"; AudioMgr.beep(); });
+    area.querySelector("#thermo-ok").addEventListener("click", () => {
+      const v = parseFloat(range.value);
+      if (Math.abs(v - target) <= CONFIG.THERMO_TOLERANCE) {
+        AudioMgr.chime();
+        bellaSay("Lämpö mitattu!", "happy");
+        registerTimer(setTimeout(() => onComplete(), 600));
+      } else {
+        AudioMgr.beep();
+        bellaSay("Melkein! Säädä vielä vähän.", "think");
+      }
+    });
+    this.active = { cleanup: () => {} };
+    registerTimer(setTimeout(() => { bellaSay("Hyvä yritys!", "happy"); onComplete(); }, CONFIG.MINIGAME_MAX_MS));
+  },
+  startMagnify(onComplete) {
+    let found = 0;
+    const targets = shuffle([...Array(16).keys()]).slice(0, CONFIG.MAGNIFY_SPOTS);
+    const area = document.createElement("div");
+    area.className = "minigame-area";
+    area.innerHTML = `<p>Etsi punaiset täplät 🔍</p><div class="magnify-grid" id="mag-grid"></div><p id="mag-prog">0 / ${CONFIG.MAGNIFY_SPOTS}</p>`;
+    const grid = area.querySelector("#mag-grid");
+    const prog = area.querySelector("#mag-prog");
+    for (let i = 0; i < 16; i++) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "magnify-spot" + (targets.includes(i) ? " target" : "");
+      btn.addEventListener("click", () => {
+        if (btn.classList.contains("found")) return;
+        if (targets.includes(i)) {
+          btn.classList.add("found"); btn.textContent = "🔴"; found++;
+          prog.textContent = `${found} / ${CONFIG.MAGNIFY_SPOTS}`;
+          AudioMgr.chime();
+          if (found >= CONFIG.MAGNIFY_SPOTS) {
+            bellaSay("Löysit kaikki!", "happy");
+            registerTimer(setTimeout(onComplete, 800));
+          }
+        } else { AudioMgr.beep(); }
+      });
+      grid.appendChild(btn);
+    }
+    const container = $("#minigame-slot");
+    if (container) { container.innerHTML = ""; container.appendChild(area); }
+    this.active = { cleanup: () => {} };
+    registerTimer(setTimeout(() => { if (found < CONFIG.MAGNIFY_SPOTS) onComplete(); }, CONFIG.MINIGAME_MAX_MS));
+  }
+};
+
+// ============================================================================
+// Drag & Drop (Pointer Events)
+// ============================================================================
+function setupDragDrop() {
+  document.addEventListener("pointerdown", e => {
+    const tool = e.target.closest(".tool-draggable:not(.used)");
+    if (!tool) return;
+    AudioMgr.unlock();
+    gameState.dragTool = { el: tool, id: tool.dataset.tool, offsetX: 0, offsetY: 0 };
+    tool.classList.add("dragging");
+    tool.setPointerCapture(e.pointerId);
+    const t = TOOLS.find(x => x.id === tool.dataset.tool);
+    if (t) AudioMgr.speak(t.speak);
+  });
+  document.addEventListener("pointermove", e => {
+    if (!gameState.dragTool) return;
+    const t = gameState.dragTool.el;
+    t.style.left = (e.clientX - 36) + "px";
+    t.style.top = (e.clientY - 36) + "px";
+  });
+  document.addEventListener("pointerup", e => {
+    if (!gameState.dragTool) return;
+    const { el, id } = gameState.dragTool;
+    el.classList.remove("dragging");
+    el.style.left = el.style.top = "";
+    const drop = document.elementFromPoint(e.clientX, e.clientY);
+    const stage = drop && drop.closest("#patient-drop");
+    if (stage) onToolDropped(id);
+    gameState.dragTool = null;
+  });
+}
+
+function onToolDropped(toolId) {
+  if (gameState.toolsUsed.includes(toolId)) return;
+  const ac = gameState.activeCase;
+  if (!ac) return;
+  gameState.toolsUsed.push(toolId);
+  const tool = TOOLS.find(t => t.id === toolId);
+  const symptom = ac.symptom;
+  let finding = symptom ? symptom.finding : "Tutkimus tehty.";
+  if (toolId === "stethoscope") {
+    finding = "Sydän kuulostaa nopealta.";
+    AudioMgr.dumdum();
+    registerTimer(setTimeout(() => {
+      const stage = $("#patient-drop");
+      if (stage) AnimMgr.heartEffect(stage);
+    }, 100));
+  } else if (toolId === "thermometer") {
+    finding = "Lämpöä 39,8°C.";
+    AudioMgr.beep();
+    registerTimer(setTimeout(() => AudioMgr.beep(), 150));
+  } else if (toolId === "magnifying_glass") {
+    finding = symptom ? symptom.hint : "Löytyi jotain.";
+    AudioMgr.playTone(400, 0.2);
+  }
+  gameState.findings.push({ toolId, icon: tool.emoji, text: finding });
+  if (gameState.mood === "sad") setMood("neutral");
+  bellaSay("Hyvä tutkimus!", "happy");
+  StateMachine.transition(GAME_STATE.MINIGAME);
+  MiniGames.start(toolId, () => {
+    EventBus.emit(EVT.MINIGAME_COMPLETE, toolId);
+    StateMachine.transition(GAME_STATE.EXAMINATION);
+    checkDiagnosisComplete();
+    render();
+  });
+  render();
+}
+
+function checkDiagnosisComplete() {
+  const required = CONFIG.MIN_TOOLS_REQUIRED;
+  if (gameState.toolsUsed.length >= required) {
+    gameState.mood = "happy";
+    EventBus.emit(EVT.DIAGNOSIS_COMPLETE);
+    bellaSay("Tutkimus valmis! Mennään hoitoon.", "happy");
+    AudioMgr.speak(getEduFact());
+  }
+}
+
+function setMood(m) {
+  gameState.mood = m;
+}
+
+// ============================================================================
+// Game actions
+// ============================================================================
+function startPatient() {
+  AnimMgr.cleanup();
+  MiniGames.cleanup();
+  gameState.activeCase = getNextCase();
+  if (!gameState.activeCase) return;
+  gameState.currentAnimalId = gameState.activeCase.animalId;
+  gameState.symptomId = gameState.activeCase.symptomId;
+  gameState.toolsUsed = [];
+  gameState.findings = [];
+  gameState.mood = "sad";
+  gameState.walking = true;
+  StateMachine.transition(GAME_STATE.PATIENT_ENTRY);
+  const animal = getCurrentAnimal();
+  if (animal) AudioMgr.animalSound(animal);
+  bellaSay("Uusi potilas saapuu! Tutkitaan eläin.", "happy");
+  EventBus.emit(EVT.PATIENT_ARRIVED, animal);
+  AnimMgr.walkWithPaws(1200, "in");
+  if (Math.random() < 0.25) AnimMgr.showAmbulance();
+  registerTimer(setTimeout(() => {
+    gameState.walking = false;
+    setRoom("examination");
+    StateMachine.transition(GAME_STATE.EXAMINATION);
+    AudioMgr.roomMusic("examination");
+    render();
+  }, 1200));
+  render();
+}
+
+function tryTreatment(treatmentId) {
+  const ac = gameState.activeCase;
+  if (!ac) return;
+  if (treatmentId === ac.treatment) {
+    completeTreatment();
+  } else {
+    AudioMgr.ups();
+    bellaSay("Kokeillaan toista hoitoa!", "think");
+    setMood("neutral");
+    render();
+  }
+}
+
+function completeTreatment() {
+  const animal = getCurrentAnimal();
+  if (!animal) return;
+  AudioMgr.chime();
+  AudioMgr.fanfare();
+  setMood("healed");
+  saved.cured++;
+  saved.stars++;
+  if (!saved.curedAnimalIds.includes(animal.id)) saved.curedAnimalIds.push(animal.id);
+  const sticker = STICKERS.find(s => s.animalId === animal.id);
+  if (sticker && !saved.stickerIds.includes(sticker.id)) {
+    saved.stickerIds.push(sticker.id);
+    EventBus.emit(EVT.STICKER_UNLOCKED, sticker);
+  }
+  saved.queue.shift();
+  if (!saved.queue.length) saved.queue = shuffle(ANIMALS.map(a => a.id));
+  saveGame();
+  StateMachine.transition(GAME_STATE.RECOVERY);
+  AnimMgr.screenFlash();
+  AnimMgr.launchConfetti(CONFIG.CONFETTI_COUNT);
+  const stage = $("#patient-drop");
+  if (stage) AnimMgr.starFly(stage);
+  bellaSay("Mahtavaa! Eläin voi paremmin!", "happy");
+  EventBus.emit(EVT.TREATMENT_COMPLETE);
+  EventBus.emit(EVT.STAR_GAINED);
+  gameState.walkingOut = true;
+  gameState.room = "examination";
+  render();
+  AnimMgr.walkWithPaws(1000, "out");
+  registerTimer(setTimeout(() => {
+    gameState.walkingOut = false;
+    StateMachine.transition(GAME_STATE.REWARD);
+    showSurpriseBox(() => showColorReward(() => showRecoveryScreen()));
+  }, 1000));
+}
+
+function showSurpriseBox(cb) {
+  const reward = pickReward();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `<div class="modal" role="dialog"><div class="surprise-box">🎁</div>
+    <p style="text-align:center;font-size:1.3rem">Sait: ${reward.emoji} ${reward.label}!</p>
+    <button type="button" class="btn btn-primary" id="surprise-ok">Jee!</button></div>`;
+  $("#modal-root").appendChild(overlay);
+  AudioMgr.fanfare();
+  overlay.querySelector("#surprise-ok").addEventListener("click", () => {
+    overlay.remove(); if (cb) cb();
+  });
+  registerTimer(setTimeout(() => { if (overlay.parentNode) { overlay.remove(); if (cb) cb(); } }, 4000));
+}
+
+function pickReward() {
+  const recent = saved.recentRewards || [];
+  const pool = REWARDS.filter(r => !recent.slice(-2).includes(r.id));
+  const pick = (pool.length ? pool : REWARDS)[Math.floor(Math.random() * (pool.length || REWARDS.length))];
+  saved.recentRewards = [...recent, pick.id].slice(-5);
+  if (pick.id !== "star") {
+    saved.decos++;
+    saved.decoInventory.push(pick.emoji);
+  }
+  return pick;
+}
+
+function showColorReward(cb) {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `<div class="modal"><h3>🎨 Väritä palkintosi!</h3>
+    <canvas class="color-canvas" id="color-canvas" width="300" height="200"></canvas>
+    <p id="color-timer">${CONFIG.COLOR_REWARD_SECONDS} s</p></div>`;
+  $("#modal-root").appendChild(overlay);
+  const canvas = overlay.querySelector("#color-canvas");
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 300, 200);
+  ctx.font = "80px serif"; ctx.fillText("🏆", 110, 130);
+  let drawing = false;
+  const colors = ["#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#a855f7"];
+  let sec = CONFIG.COLOR_REWARD_SECONDS;
+  const timerEl = overlay.querySelector("#color-timer");
+  const tick = setInterval(() => { sec--; timerEl.textContent = sec + " s"; if (sec <= 0) { clearInterval(tick); saveCanvasPhoto(canvas); overlay.remove(); if (cb) cb(); } }, 1000);
+  registerTimer(tick);
+  canvas.addEventListener("pointerdown", e => { drawing = true; draw(e); });
+  canvas.addEventListener("pointermove", e => { if (drawing) draw(e); });
+  canvas.addEventListener("pointerup", () => drawing = false);
+  function draw(e) {
+    const r = canvas.getBoundingClientRect();
+    ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+    ctx.beginPath(); ctx.arc(e.clientX - r.left, e.clientY - r.top, 12, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function saveCanvasPhoto(canvas) {
+  try {
+    const dataUrl = canvas.toDataURL("image/png");
+    const animal = getCurrentAnimal();
+    saved.photos++;
+    saved.photoAlbum.push({ id: animal?.id || "?", name: animal?.name || "?", dataUrl, takenAt: new Date().toISOString() });
+    saveGame();
+    EventBus.emit(EVT.PHOTO_CAPTURED);
+  } catch { /* graceful */ }
+}
+
+function takePhoto() {
+  const animal = getCurrentAnimal();
+  if (!animal) return;
+  saved.photos++;
+  saved.photoAlbum.push({ id: animal.id, name: animal.name, emoji: animal.emoji, takenAt: new Date().toISOString() });
+  saveGame();
+  bellaSay("Kuva tallennettu albumiin!", "happy");
+  EventBus.emit(EVT.PHOTO_CAPTURED);
+}
+
+function showRecoveryScreen() {
+  setRoom("garden");
+  StateMachine.transition(GAME_STATE.REWARD);
+  bellaSay("Hienoa työtä! Voit ottaa kuvan tai valita seuraavan potilaan.", "happy");
+  render();
+}
+
+function claimDailyGift() {
+  const today = todayStr();
+  if (saved.dailyGift === today) { bellaSay("Olet jo lunastanut tämän päivän lahjan!", "think"); return; }
+  saved.dailyGift = today;
+  saved.decos++;
+  saved.stars++;
+  const deco = DECO_ITEMS[Math.floor(Math.random() * DECO_ITEMS.length)];
+  saved.decorations.push(deco);
+  saved.decoInventory.push(deco);
+  saveGame();
+  bellaSay("Päivän lahja! Sait koristeen " + deco + ". Laita se pihalle!", "happy");
+  render();
+}
+
+function addToDecoInventory(emoji) {
+  if (!emoji) return;
+  saved.decoInventory.push(emoji);
+  saved.decoInventory = saved.decoInventory.slice(-20);
+  saveGame();
+}
+
+function placeDecoration(room, xPct, yPct, emoji) {
+  const idx = saved.decoInventory.indexOf(emoji);
+  if (idx === -1) return false;
+  saved.decoInventory.splice(idx, 1);
+  saved.placedDecorations.push({
+    id: Date.now(),
+    emoji,
+    x: Math.round(xPct),
+    y: Math.round(yPct),
+    room
+  });
+  saved.placedDecorations = saved.placedDecorations.slice(-30);
+  saveGame();
+  AudioMgr.chime();
+  bellaSay("Koriste laitettu paikoilleen!", "happy");
+  return true;
+}
+
+function buildClinicScene(room, interactive) {
+  const scene = document.createElement("div");
+  scene.className = "clinic-scene" + (interactive && gameState.selectedDeco ? " placing" : "");
+  scene.dataset.room = room;
+  scene.setAttribute("role", interactive ? "button" : "img");
+  scene.setAttribute("aria-label", interactive ? "Klinikan piha, napauta asettaaksesi koristeen" : "Klinikka koristeltuna");
+
+  const base = document.createElement("div");
+  base.className = "clinic-scene-base";
+  base.textContent = getClinicVisual();
+  base.setAttribute("aria-hidden", "true");
+  scene.appendChild(base);
+
+  (saved.placedDecorations || []).filter(d => d.room === room).forEach(d => {
+    const el = document.createElement("div");
+    el.className = "placed-deco";
+    el.textContent = d.emoji;
+    el.style.left = d.x + "%";
+    el.style.top = d.y + "%";
+    el.setAttribute("aria-hidden", "true");
+    scene.appendChild(el);
+  });
+
+  if (interactive) {
+    scene.addEventListener("pointerdown", e => {
+      if (!gameState.selectedDeco) return;
+      e.preventDefault();
+      const rect = scene.getBoundingClientRect();
+      const xPct = Math.max(8, Math.min(92, ((e.clientX - rect.left) / rect.width) * 100));
+      const yPct = Math.max(15, Math.min(85, ((e.clientY - rect.top) / rect.height) * 100));
+      if (placeDecoration(room, xPct, yPct, gameState.selectedDeco)) {
+        gameState.selectedDeco = null;
+        render();
+      }
+    });
+  }
+  return scene;
+}
+
+function renderDecoPalette(container) {
+  const inv = saved.decoInventory || [];
+  if (!inv.length) {
+    const p = document.createElement("p");
+    p.className = "drop-hint";
+    p.textContent = "Ansaitse koristeita hoitamalla eläimiä tai lunastamalla päivälahjan!";
+    container.appendChild(p);
+    return;
+  }
+  const hint = document.createElement("p");
+  hint.className = "drop-hint";
+  hint.textContent = gameState.selectedDeco
+    ? "Napauta pihaa asettaaksesi koristeen 👇"
+    : "Valitse koriste ja napauta pihaa";
+  container.appendChild(hint);
+  const palette = document.createElement("div");
+  palette.className = "deco-palette";
+  inv.forEach(emoji => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "deco-chip" + (gameState.selectedDeco === emoji ? " selected" : "");
+    chip.textContent = emoji;
+    chip.dataset.action = "select-deco";
+    chip.dataset.emoji = emoji;
+    chip.dataset.speak = "Valitse koriste";
+    palette.appendChild(chip);
+  });
+  container.appendChild(palette);
+}
+
+function buildMapClinicPreview() {
+  const wrap = document.createElement("div");
+  wrap.className = "map-clinic-preview";
+  wrap.setAttribute("aria-hidden", "true");
+  const base = document.createElement("span");
+  base.className = "map-clinic-base";
+  base.textContent = getClinicVisual();
+  wrap.appendChild(base);
+  (saved.placedDecorations || [])
+    .filter(d => d.room === "clinic")
+    .slice(0, 10)
+    .forEach(d => {
+      const dot = document.createElement("span");
+      dot.className = "map-deco-dot";
+      dot.textContent = d.emoji;
+      dot.style.left = d.x + "%";
+      dot.style.top = d.y + "%";
+      wrap.appendChild(dot);
+    });
+  return wrap;
+}
+
+function setRoom(room) {
+  gameState.room = room;
+  document.querySelectorAll(".room-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.room === room);
+    btn.disabled = false;
+  });
+  if (room === "treatment" && gameState.toolsUsed.length < CONFIG.MIN_TOOLS_REQUIRED) {
+    bellaSay("Tee ensin tutkimus!", "think");
+    gameState.room = "examination";
+  }
+  if (room === "examination" || room === "treatment") AudioMgr.roomMusic(room);
+  render();
+}
+
+// ============================================================================
+// Render
+// ============================================================================
+function updateHUD() {
+  const unique = saved.curedAnimalIds.length;
+  $("#stat-cured").textContent = `Parannetut: ${unique}/5`;
+  $("#stat-stars").textContent = getStarDisplay();
+  $("#stat-clinic").textContent = getClinicVisual();
+}
+
+function render() {
+  updateHUD();
+  const screen = $("#screen");
+  if (!screen) return;
+  screen.innerHTML = "";
+  const room = gameState.room;
+  if (room === "reception") renderReception(screen);
+  else if (room === "examination") renderExamination(screen);
+  else if (room === "treatment") renderTreatment(screen);
+  else if (room === "garden") renderGarden(screen);
+  else if (room === "map") renderMap(screen);
+}
+
+function renderReception(container) {
+  const h = document.createElement("h2");
+  h.textContent = "🏠 Vastaanotto";
+  container.appendChild(h);
+  const queue = document.createElement("div");
+  queue.className = "queue-row";
+  saved.queue.slice(0, 3).forEach((id, i) => {
+    const a = getAnimal(id);
+    if (!a) return;
+    const div = document.createElement("div");
+    div.className = "queue-npc" + (i === 0 ? " next" : "") + (saved.curedAnimalIds.includes(id) ? " done" : "");
+    div.innerHTML = `<div style="font-size:2rem">${a.emoji}</div><div>${a.name.split("-")[0]}</div>`;
+    queue.appendChild(div);
+  });
+  container.appendChild(queue);
+  container.appendChild(buildClinicScene("clinic", false));
+  const animal = getCurrentAnimal();
+  if (animal) {
+    const p = document.createElement("p");
+    p.innerHTML = `Seuraava potilas: <strong>${animal.name}</strong> `;
+    const tag = document.createElement("span");
+    tag.className = "personality-tag";
+    tag.textContent = animal.personality;
+    p.appendChild(tag);
+    container.appendChild(p);
+    const soundHint = document.createElement("p");
+    soundHint.className = "drop-hint";
+    soundHint.textContent = `${animal.emoji} "${animal.voicePhrase}" · Tykkää: ${animal.favorite}`;
+    container.appendChild(soundHint);
+  }
+  const btn = document.createElement("button");
+  btn.type = "button"; btn.className = "btn btn-primary btn-icon";
+  btn.dataset.action = "start-patient";
+  btn.dataset.speak = "Aloita tutkimus";
+  btn.textContent = "▶️ Aloita tutkimus";
+  container.appendChild(btn);
+}
+
+function renderExamination(container) {
+  const h = document.createElement("h2");
+  h.textContent = "🩺 Tutkimushuone";
+  container.appendChild(h);
+  const animal = getCurrentAnimal();
+  if (!animal) { container.innerHTML += "<p>Ei potilasta.</p>"; return; }
+
+  const stage = document.createElement("div");
+  stage.className = "patient-stage" + (gameState.walking ? " walking" : "");
+  stage.id = "patient-drop";
+  if (gameState.walkingOut) stage.style.animation = "walkOut 1s ease forwards";
+  else if (gameState.walking) stage.style.animation = "walkIn 1.2s ease forwards";
+  const emoji = document.createElement("div");
+  emoji.className = "animal-emoji" + (gameState.mood === "healed" ? " healed" : "");
+  emoji.textContent = animal.emoji;
+  stage.appendChild(emoji);
+  const moodBar = document.createElement("div");
+  moodBar.className = "mood-bar";
+  MOODS.forEach(m => {
+    const s = document.createElement("span");
+    s.textContent = MOOD_EMOJI[m];
+    if (m !== gameState.mood) s.classList.add("dim");
+    moodBar.appendChild(s);
+  });
+  stage.appendChild(moodBar);
+  container.appendChild(stage);
+
+  const palette = document.createElement("div");
+  palette.className = "tool-palette";
+  TOOLS.forEach(t => {
+    const el = document.createElement("div");
+    el.className = "tool-draggable" + (gameState.toolsUsed.includes(t.id) ? " used" : "");
+    el.dataset.tool = t.id;
+    el.textContent = t.emoji;
+    el.setAttribute("role", "button");
+    el.setAttribute("aria-label", t.speak);
+    palette.appendChild(el);
+  });
+  container.appendChild(palette);
+  const hint = document.createElement("p");
+  hint.className = "drop-hint";
+  hint.textContent = "Vedä työkalu eläimen päälle 👆";
+  container.appendChild(hint);
+
+  if (gameState.findings.length) {
+    const list = document.createElement("div");
+    list.className = "findings-list";
+    gameState.findings.forEach(f => {
+      const item = document.createElement("div");
+      item.className = "finding-item";
+      item.innerHTML = `<span class="icon">${f.icon || "📋"}</span><span>${f.text}</span>`;
+      list.appendChild(item);
+    });
+    container.appendChild(list);
+  }
+
+  const mgSlot = document.createElement("div");
+  mgSlot.id = "minigame-slot";
+  container.appendChild(mgSlot);
+
+  if (gameState.toolsUsed.length >= CONFIG.MIN_TOOLS_REQUIRED) {
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "btn btn-primary";
+    btn.dataset.action = "go-treatment";
+    btn.textContent = "💊 Siirry hoitoon";
+    container.appendChild(btn);
+  } else {
+    const prog = document.createElement("p");
+    prog.textContent = `Tutkimus: ${gameState.toolsUsed.length} / ${CONFIG.MIN_TOOLS_REQUIRED} työkalua`;
+    container.appendChild(prog);
+  }
+}
+
+function renderTreatment(container) {
+  const h = document.createElement("h2");
+  h.textContent = "💊 Hoitohuone";
+  container.appendChild(h);
+  const animal = getCurrentAnimal();
+  if (!animal || gameState.toolsUsed.length < CONFIG.MIN_TOOLS_REQUIRED) {
+    const p = document.createElement("p");
+    p.textContent = "Tee ensin tutkimus tutkimushuoneessa.";
+    container.appendChild(p);
+    return;
+  }
+  const stage = document.createElement("div");
+  stage.className = "patient-stage";
+  stage.innerHTML = `<div class="animal-emoji">${animal.emoji}</div><div class="mood-bar"><span>${MOOD_EMOJI.happy}</span></div>`;
+  container.appendChild(stage);
+  const ac = gameState.activeCase;
+  const p = document.createElement("p");
+  p.textContent = ac && ac.symptom ? "Oire: " + ac.symptom.hint : "Valitse oikea hoito.";
+  container.appendChild(p);
+  const grid = document.createElement("div");
+  grid.className = "grid-auto";
+  animal.treatments.forEach(t => {
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "btn btn-secondary btn-icon";
+    btn.dataset.action = "treat"; btn.dataset.treatment = t.id;
+    btn.dataset.speak = t.label;
+    btn.innerHTML = `${t.icon} ${t.label}`;
+    grid.appendChild(btn);
+  });
+  container.appendChild(grid);
+}
+
+function renderGarden(container) {
+  const h = document.createElement("h2");
+  h.textContent = "🌳 Piha & koristelu";
+  container.appendChild(h);
+  renderDecoPalette(container);
+  container.appendChild(buildClinicScene("clinic", true));
+  const gift = document.createElement("div");
+  gift.className = "card-inner";
+  const today = todayStr();
+  gift.innerHTML = `<p>🎁 Päivän lahja: ${saved.dailyGift === today ? "Lunastettu ✅" : "Valmis!"}</p>`;
+  container.appendChild(gift);
+  if (saved.dailyGift !== today) {
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "btn btn-primary";
+    btn.dataset.action = "daily-gift"; btn.textContent = "🎁 Lunasta lahja";
+    container.appendChild(btn);
+  }
+  if (gameState.phase === GAME_STATE.REWARD || saved.cured > 0) {
+    const row = document.createElement("div");
+    row.className = "grid-2";
+    const photoBtn = document.createElement("button");
+    photoBtn.type = "button"; photoBtn.className = "btn btn-secondary";
+    photoBtn.dataset.action = "take-photo"; photoBtn.textContent = "📸 Ota kuva";
+    const nextBtn = document.createElement("button");
+    nextBtn.type = "button"; nextBtn.className = "btn btn-primary";
+    nextBtn.dataset.action = "next-patient"; nextBtn.textContent = "➡️ Seuraava potilas";
+    row.appendChild(photoBtn); row.appendChild(nextBtn);
+    container.appendChild(row);
+  }
+}
+
+function renderMap(container) {
+  if (!saved.mapVisited) {
+    saved.mapVisited = true;
+    saveGame();
+    bellaSay("Tästä näet koko klinikkasi!", "happy");
+  }
+
+  const h = document.createElement("h2");
+  h.textContent = "🗺️ Klinikan kartta";
+  container.appendChild(h);
+
+  const intro = document.createElement("p");
+  intro.className = "drop-hint";
+  intro.textContent = "Napauta paikkaa siirtyäksesi sinne.";
+  container.appendChild(intro);
+
+  const mapGrid = document.createElement("div");
+  mapGrid.className = "world-map";
+  mapGrid.setAttribute("role", "group");
+  mapGrid.setAttribute("aria-label", "Klinikan paikat");
+
+  const locations = [
+    { action: "goto-reception", speak: "Klinikka, vastaanotto", label: "🏥 Klinikka", sub: "Vastaanotto", showPreview: true },
+    { action: "goto-garden", speak: "Piha, koristeet", label: "🌳 Piha", sub: "Koristele klinikkaa", showPreview: false },
+    { action: "open-album-map", speak: "Valokuva-albumi", label: "📸 Albumi", sub: "Onnelliset hetket", showPreview: false },
+    { action: "open-collection-map", speak: "Tarra-kokoelma", label: "🎖️ Kokoelma", sub: "Kerää tarrat", showPreview: false }
+  ];
+
+  locations.forEach(loc => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn btn-secondary map-location card-inner";
+    btn.dataset.action = loc.action;
+    btn.dataset.speak = loc.speak;
+    btn.setAttribute("aria-label", loc.speak);
+    if (loc.showPreview) btn.appendChild(buildMapClinicPreview());
+    const label = document.createElement("span");
+    label.className = "map-label";
+    label.textContent = loc.label;
+    btn.appendChild(label);
+    const sub = document.createElement("span");
+    sub.className = "map-sublabel";
+    sub.textContent = loc.sub;
+    btn.appendChild(sub);
+    mapGrid.appendChild(btn);
+  });
+
+  container.appendChild(mapGrid);
+}
+
+// attachButtonSpeech: puhe käsitellään document-click-delegoinnilla [data-speak]
+
+// ============================================================================
+// Modals
+// ============================================================================
+function openCollectionModal() {
+  closeModals();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.dataset.modal = "1";
+  let html = `<div class="modal" role="dialog"><h3>🎖️ Tarra-kokoelma</h3><div class="sticker-grid">`;
+  STICKERS.forEach(s => {
+    const unlocked = saved.stickerIds.includes(s.id);
+    html += `<div class="sticker-item${unlocked ? "" : " locked"}"><div class="emoji">${s.emoji}</div><div>${s.title}</div></div>`;
+  });
+  html += `</div><button type="button" class="btn btn-primary" data-action="close-modal">Sulje</button></div>`;
+  overlay.innerHTML = html;
+  $("#modal-root").appendChild(overlay);
+}
+
+function openAlbumModal() {
+  closeModals();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.dataset.modal = "1";
+  let html = `<div class="modal" role="dialog"><h3>📸 Valokuva-albumi</h3><div class="photo-grid">`;
+  if (!saved.photoAlbum.length) html += `<p>Ei vielä kuvia. Hoida eläin ja ota kuva!</p>`;
+  saved.photoAlbum.slice(-8).reverse().forEach(p => {
+    const a = getAnimal(p.id);
+    html += `<div class="photo-item"><div style="font-size:2.5rem">${p.dataUrl ? "🖼️" : (p.emoji || a?.emoji || "📸")}</div><div>${p.name || a?.name || "?"}</div></div>`;
+  });
+  html += `</div><button type="button" class="btn btn-primary" data-action="close-modal">Sulje</button></div>`;
+  overlay.innerHTML = html;
+  $("#modal-root").appendChild(overlay);
+}
+
+function openOptionsModal() {
+  closeModals();
+  const a = gameState.a11y;
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.dataset.modal = "1";
+  overlay.innerHTML = `<div class="modal" role="dialog"><h3>⚙️ Asetukset</h3>
+    <div class="options-grid">
+      <div class="toggle-row"><label for="tog-motion">Vähemmän animaatioita</label><input type="checkbox" id="tog-motion" ${a.reducedMotion ? "checked" : ""}/></div>
+      <div class="toggle-row"><label for="tog-contrast">Korkea kontrasti</label><input type="checkbox" id="tog-contrast" ${a.highContrast ? "checked" : ""}/></div>
+      <div class="toggle-row"><label for="tog-touch">Isot napautusalueet</label><input type="checkbox" id="tog-touch" ${a.largeTouch ? "checked" : ""}/></div>
+      <div class="toggle-row"><label for="tog-mute">Mykistä äänet</label><input type="checkbox" id="tog-mute" ${a.muted ? "checked" : ""}/></div>
+    </div>
+    <button type="button" class="btn btn-primary" data-action="close-modal">Valmis</button></div>`;
+  $("#modal-root").appendChild(overlay);
+  overlay.querySelector("#tog-motion").addEventListener("change", e => { gameState.a11y.reducedMotion = e.target.checked; Accessibility.save(); });
+  overlay.querySelector("#tog-contrast").addEventListener("change", e => { gameState.a11y.highContrast = e.target.checked; Accessibility.save(); });
+  overlay.querySelector("#tog-touch").addEventListener("change", e => { gameState.a11y.largeTouch = e.target.checked; Accessibility.save(); });
+  overlay.querySelector("#tog-mute").addEventListener("change", e => { gameState.a11y.muted = e.target.checked; Accessibility.save(); });
+}
+
+function closeModals() { $("#modal-root").innerHTML = ""; }
+
+// ============================================================================
+// Event handlers
+// ============================================================================
+function handleAction(action, el) {
+  AudioMgr.unlock();
+  if (action === "start-patient") startPatient();
+  else if (action === "go-treatment") { setRoom("treatment"); StateMachine.transition(GAME_STATE.TREATMENT); }
+  else if (action === "treat") tryTreatment(el.dataset.treatment);
+  else if (action === "daily-gift") claimDailyGift();
+  else if (action === "take-photo") takePhoto();
+  else if (action === "next-patient") { gameState.activeCase = null; gameState.toolsUsed = []; setRoom("reception"); StateMachine.transition(GAME_STATE.RECEPTION); bellaSay("Valitse seuraava potilas!", "happy"); }
+  else if (action === "close-modal") closeModals();
+  else if (action === "select-deco") {
+    const emoji = el.dataset.emoji;
+    gameState.selectedDeco = gameState.selectedDeco === emoji ? null : emoji;
+    bellaSay(gameState.selectedDeco ? "Napauta pihaa!" : "Valitse koriste.", "happy");
+    render();
+  } else if (action === "goto-reception") {
+    setRoom("reception");
+    StateMachine.transition(GAME_STATE.RECEPTION);
+  } else if (action === "goto-garden") {
+    setRoom("garden");
+    StateMachine.transition(GAME_STATE.GARDEN);
+  } else if (action === "open-album-map") {
+    openAlbumModal();
+  } else if (action === "open-collection-map") {
+    openCollectionModal();
+  }
+}
+
+document.addEventListener("click", e => {
+  const speakBtn = e.target.closest("[data-speak]");
+  if (speakBtn && !gameState.a11y.muted) AudioMgr.speak(speakBtn.dataset.speak);
+  const actionEl = e.target.closest("[data-action]");
+  if (actionEl) {
+    handleAction(actionEl.dataset.action, actionEl);
+    return;
+  }
+  const roomBtn = e.target.closest(".room-btn");
+  if (roomBtn && !roomBtn.disabled) {
+    AudioMgr.unlock();
+    setRoom(roomBtn.dataset.room);
+    if (roomBtn.dataset.room === "reception") StateMachine.transition(GAME_STATE.RECEPTION);
+    else if (roomBtn.dataset.room === "examination") StateMachine.transition(GAME_STATE.EXAMINATION);
+    else if (roomBtn.dataset.room === "treatment") StateMachine.transition(GAME_STATE.TREATMENT);
+    else if (roomBtn.dataset.room === "garden") StateMachine.transition(GAME_STATE.GARDEN);
+    else if (roomBtn.dataset.room === "map") StateMachine.transition(GAME_STATE.MAP);
+  }
+});
+
+$("#btn-collection").addEventListener("click", () => { AudioMgr.unlock(); openCollectionModal(); AudioMgr.speak("Tarra-kokoelma"); });
+$("#btn-album").addEventListener("click", () => { AudioMgr.unlock(); openAlbumModal(); AudioMgr.speak("Valokuva-albumi"); });
+$("#btn-options").addEventListener("click", () => { AudioMgr.unlock(); openOptionsModal(); });
+
+document.addEventListener("pointermove", e => AnimMgr.setParallax(e.clientX, e.clientY));
+
+$("#modal-root").addEventListener("click", e => {
+  if (e.target.dataset.action === "close-modal") closeModals();
+});
+
+// ============================================================================
+// Background silhouettes
+// ============================================================================
+function initBackground() {
+  const bg = $("#parallax-bg");
+  const emojis = ["🐱", "🐶", "🐰", "🐦", "🐠", "🐾"];
+  for (let i = 0; i < 8; i++) {
+    const s = document.createElement("div");
+    s.className = "float-silhouette";
+    s.textContent = emojis[i % emojis.length];
+    s.style.left = (Math.random() * 90) + "%";
+    s.style.top = (Math.random() * 90) + "%";
+    s.style.animationDelay = (Math.random() * 10) + "s";
+    bg.appendChild(s);
+  }
+}
+
+function applyDayNight() {
+  const h = new Date().getHours();
+  document.body.classList.toggle("night-mode", h >= CONFIG.NIGHT_START || h < CONFIG.NIGHT_END);
+}
+
+// ============================================================================
+// SmokeTest
+// ============================================================================
+const SmokeTest = {
+  results: [],
+  assert(name, cond) { this.results.push({ name, pass: !!cond }); return cond; },
+  run() {
+    this.results = [];
+    this.assert("SafeStore available", SafeStore.available);
+    this.assert("5 animals", ANIMALS.length === 5);
+    this.assert("Pilot cases", PILOT_CASES.length >= 3);
+    this.assert("Legacy keys defined", STORAGE_KEYS.legacy.stars === "vetStars");
+    this.assert("Reduced motion class", document.body.classList.contains("reduced-motion") === gameState.a11y.reducedMotion);
+    this.assert("StateMachine has phase", !!StateMachine.current);
+    this.assert("Immutable animals", Object.isFrozen(ANIMALS));
+    this.assert("updateHUD fn", typeof updateHUD === "function");
+    this.assert("render fn", typeof render === "function");
+    this.assert("renderReception fn", typeof renderReception === "function");
+    this.assert("renderExamination fn", typeof renderExamination === "function");
+    this.assert("renderTreatment fn", typeof renderTreatment === "function");
+    this.assert("renderGarden fn", typeof renderGarden === "function");
+    this.assert("renderMap fn", typeof renderMap === "function");
+    this.assert("MAP state defined", !!GAME_STATE.MAP);
+    this.assert("deco inventory array", Array.isArray(saved.decoInventory));
+    this.assert("placed decorations array", Array.isArray(saved.placedDecorations));
+    const mem = performance.memory;
+    if (mem) {
+      this.assert("Heap readable", typeof mem.usedJSHeapSize === "number");
+    } else {
+      this.results.push({ name: "Heap readable (N/A non-Chromium)", pass: true });
+    }
+    const failed = this.results.filter(r => !r.pass);
+    console.log("[SmokeTest]", this.results);
+    if (failed.length) console.warn("[SmokeTest] FAILED:", failed);
+    return failed.length === 0;
+  }
+};
+
+// ============================================================================
+// Init
+// ============================================================================
+function init() {
+  AudioMgr.init();
+  Accessibility.load();
+  initBackground();
+  applyDayNight();
+  registerTimer(setInterval(applyDayNight, 60000));
+  setupDragDrop();
+  StateMachine.transition(GAME_STATE.RECEPTION);
+  gameState.room = "reception";
+  updateHUD();
+  render();
+  bellaSay("Tervetuloa Maxin eläinklinikalle! Paina aloita tutkimus.", "happy");
+  if ("speechSynthesis" in window) {
+    speechSynthesis.onvoiceschanged = () => {};
+  }
+  window.__smokeTest = () => SmokeTest.run();
+  window.__stressTest = (n = 100) => {
+    let i = 0, ok = 0;
+    while (i < n) {
+      try {
+        gameState.activeCase = getNextCase();
+        if (gameState.activeCase) ok++;
+        i++;
+      } catch { break; }
+    }
+    console.log(`[StressTest] ${ok}/${n} cases generated`);
+    return ok === n;
+  };
+}
+
+init();
+</script>
+</body>
+</html>

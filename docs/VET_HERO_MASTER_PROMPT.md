@@ -1,16 +1,27 @@
-# Vet Hero Master Prompt
-
-This document captures the project vision and core prompt guidance for Vet Hero. Use it to align new content, game flows, and educational messaging.
+# Vet Hero / Maxin Eläinklinikka — Master Prompt
 
 ## Vision
-Vet Hero is a friendly vet game that helps children learn about animal care, empathy, and healthy habits in a fun, offline-first experience.
+Offline-first browser game for children ages 4–8. Finnish UI and voice (fi-FI). Single-file deployment: `elinlaakari-peli.html`.
 
-## Key Goals
-- Create a safe and supportive game environment.
-- Keep interactions intuitive for ages 4–8.
-- Ensure the game is playable from a local HTML file.
+## Core Principles
+- Fun before educational; positive before challenging
+- Visual + audio + emotional + progress feedback on every action
+- Never punish; never show failure
+- Playable without reading; touch-first; mobile-first
+- Privacy-first: localStorage only, no network
 
-## Target Audience
-- Children ages 4–8
-- Parents and caregivers looking for simple educational gameplay
-- Educators who want a kid-friendly activity with animal themes
+## Save Keys (never rename)
+- `vetStars`, `vetCured`, `vetPhotos`, `vetDecos`, `vetDailyGift`
+- Extended: `vetHeroSaveBundle`, `vetHeroA11y`, `vetHeroCuredAnimals`, `vetHeroDecorations`
+
+## Pilot Mode
+- `CONFIG.USE_PILOT_MODE = true` — 5 fixed cases for validation
+- Dynamic random cases behind flag for Phase 2+
+
+## Architecture
+- CONFIG, REGISTRY (immutable ANIMALS), SafeStore, StateMachine, EventBus
+- AudioMgr (Web Audio + speechSynthesis), AnimMgr (confetti, cleanup)
+- Accessibility toggles: reduced motion, high contrast, large touch, mute
+
+## QA Before Release
+See [QA_TEST_MATRIX.md](QA_TEST_MATRIX.md). Run `window.__smokeTest()` and `window.__stressTest(100)` in browser console.
